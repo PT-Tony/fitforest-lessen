@@ -33,13 +33,14 @@ function App() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
 
-  const [mode, setMode] = useState<"login" | "register">("login");
+  const [mode, setMode] = useState<"login" | "register" | "forgot" | "reset">("login");
   const [activeView, setActiveView] = useState<View>("lessons");
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
+  const [newPassword, setNewPassword] = useState("");
 
   const [newTitle, setNewTitle] = useState("");
   const [newDescription, setNewDescription] = useState("");
@@ -53,22 +54,34 @@ function App() {
   const [message, setMessage] = useState("Laden...");
 
   useEffect(() => {
-    async function loadUser() {
-      const { data } = await supabase.auth.getUser();
+  let isMounted = true;
+
+  async function loadUser() {
+    const { data } = await supabase.auth.getUser();
+
+    if (isMounted) {
       setUser(data.user);
       setMessage("");
     }
+  }
 
-    loadUser();
+  loadUser();
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+  const { data: authListener } = supabase.auth.onAuthStateChange(
+    (event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setMode("reset");
+      }
+
       setUser(session?.user ?? null);
-    });
+    }
+  );
 
-    return () => {
-      listener.subscription.unsubscribe();
-    };
-  }, []);
+  return () => {
+    isMounted = false;
+    authListener.subscription.unsubscribe();
+  };
+}, []);
 
   useEffect(() => {
     if (user) {
@@ -213,6 +226,54 @@ function App() {
     setActiveView("lessons");
     setMessage("Je bent uitgelogd.");
   }
+
+async function sendPasswordResetEmail() {
+  setMessage("");
+
+  if (!email) {
+    setMessage("Vul eerst je e-mailadres in.");
+    return;
+  }
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin,
+  });
+
+  if (error) {
+    setMessage(error.message);
+    return;
+  }
+
+  setMessage("Check je mail om je wachtwoord opnieuw in te stellen.");
+  setMode("login");
+}
+
+async function updatePassword() {
+  setMessage("");
+
+  if (newPassword.length < 6) {
+    setMessage("Je nieuwe wachtwoord moet minimaal 6 tekens hebben.");
+    return;
+  }
+
+  const { error } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+
+  if (error) {
+    setMessage(error.message);
+    return;
+  }
+
+  setNewPassword("");
+  setMessage("Je wachtwoord is aangepast. Log opnieuw in met je nieuwe wachtwoord.");
+  setMode("login");
+
+  await supabase.auth.signOut();
+  setUser(null);
+  setProfile(null);
+}
+
 
   async function createLesson() {
     if (!user || !profile || profile.role !== "admin") {
@@ -402,78 +463,174 @@ const selectedLessonIsFull = selectedLesson
 const userCanCancelSelectedLesson = selectedLesson ? canCancelLesson(selectedLesson) : false;
 const userCredits = profile?.credits ?? 0;
   
-  if (!user) {
-    return (
-      <main className="auth-page">
-        <section className="auth-card">
-          <p className="eyebrow">Training Rooster | Tony</p>
-          <h1>Boek je training</h1>
-          <p className="auth-subtitle">
-            Log in, bekijk aankomende lessen en meld je makkelijk aan.
-          </p>
+  if (!user || mode === "reset") {
+  return (
+    <main className="auth-page">
+      <section className="auth-card">
+        <div className="eyebrow">Training Rooster | Tony</div>
 
-          <div className="auth-tabs">
-            <button
-              className={mode === "login" ? "auth-tab active" : "auth-tab"}
-              onClick={() => setMode("login")}
-            >
+        {mode === "login" && (
+          <>
+            <h1>Inloggen</h1>
+            <p className="auth-subtitle">
+              Log in om lessen te bekijken en je aan te melden.
+            </p>
+
+            <input
+              className="form-input"
+              type="email"
+              placeholder="E-mailadres"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
+
+            <input
+              className="form-input"
+              type="password"
+              placeholder="Wachtwoord"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+
+            <button className="primary-btn" type="button" onClick={login}>
               Inloggen
             </button>
 
             <button
-              className={mode === "register" ? "auth-tab active" : "auth-tab"}
-              onClick={() => setMode("register")}
+  className="secondary-btn"
+  type="button"
+  onClick={() => {
+    setMessage("");
+    setMode("register");
+  }}
+>
+  Account maken
+</button>
+
+<button
+  className="text-btn"
+  type="button"
+  onClick={() => {
+    setMessage("");
+    setMode("forgot");
+  }}
+>
+  Wachtwoord vergeten?
+</button>
+          </>
+        )}
+
+        {mode === "register" && (
+          <>
+            <h1>Account maken</h1>
+            <p className="auth-subtitle">
+              Maak een account aan om lessen te boeken.
+            </p>
+
+            <input
+              className="form-input"
+              type="text"
+              placeholder="Naam"
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+            />
+
+            <input
+              className="form-input"
+              type="email"
+              placeholder="E-mailadres"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
+
+            <input
+              className="form-input"
+              type="password"
+              placeholder="Wachtwoord"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+
+            <button className="primary-btn" type="button" onClick={register}>
+              Account maken
+            </button>
+
+            <button
+              className="secondary-btn"
+              type="button"
+              onClick={() => {
+                setMessage("");
+                setMode("login");
+              }}
             >
-              Account maken
+              Terug naar inloggen
             </button>
-          </div>
+          </>
+        )}
 
-          <label className="form-label">E-mail</label>
-          <input
-            className="form-input"
-            type="email"
-            placeholder="jouw@email.nl"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-          />
+        {mode === "forgot" && (
+          <>
+            <h1>Wachtwoord vergeten</h1>
+            <p className="auth-subtitle">
+              Vul je e-mailadres in. Je krijgt een link om je wachtwoord opnieuw
+              in te stellen.
+            </p>
 
-          <label className="form-label">Wachtwoord</label>
-          <input
-            className="form-input"
-            type="password"
-            placeholder="Je wachtwoord"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
+            <input
+              className="form-input"
+              type="email"
+              placeholder="E-mailadres"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
 
-          {mode === "register" && (
-            <>
-              <label className="form-label">Username</label>
-              <input
-                className="form-input"
-                type="text"
-                placeholder="Bijvoorbeeld Tony"
-                value={username}
-                onChange={(event) => setUsername(event.target.value)}
-              />
-            </>
-          )}
-
-          {mode === "login" ? (
-            <button className="primary-btn" onClick={login}>
-              Inloggen
+            <button
+              className="primary-btn"
+              type="button"
+              onClick={sendPasswordResetEmail}
+            >
+              Resetlink sturen
             </button>
-          ) : (
-            <button className="primary-btn" onClick={register}>
-              Account maken
-            </button>
-          )}
 
-          {message && <p className="notice">{message}</p>}
-        </section>
-      </main>
-    );
-  }
+            <button
+              className="secondary-btn"
+              type="button"
+              onClick={() => {
+                setMessage("");
+                setMode("login");
+              }}
+            >
+              Terug naar inloggen
+            </button>
+          </>
+        )}
+
+        {mode === "reset" && (
+          <>
+            <h1>Nieuw wachtwoord</h1>
+            <p className="auth-subtitle">
+              Kies hieronder je nieuwe wachtwoord.
+            </p>
+
+            <input
+              className="form-input"
+              type="password"
+              placeholder="Nieuw wachtwoord"
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+            />
+
+            <button className="primary-btn" type="button" onClick={updatePassword}>
+              Wachtwoord opslaan
+            </button>
+          </>
+        )}
+
+        {message && <p className="notice">{message}</p>}
+      </section>
+    </main>
+  );
+}
 
   return (
     <main className="app-page">
@@ -706,9 +863,35 @@ const userCredits = profile?.credits ?? 0;
             </section>
 
             <section className="credits-note">
-              <strong>Credits op?</strong>
-              <p>Neem contact op met Tony om nieuwe credits te kopen.</p>
-            </section>
+  <strong>Credits op?</strong>
+  <p>Neem contact op met Tony om nieuwe credits te kopen.</p>
+
+  <div className="price-table">
+    <div className="price-row">
+      <span>1 credit</span>
+      <strong>€8,50</strong>
+      <em>€8,50 per training</em>
+    </div>
+
+    <div className="price-row">
+      <span>5 credits</span>
+      <strong>€35,00</strong>
+      <em>€7,00 per training</em>
+    </div>
+
+    <div className="price-row featured">
+      <span>10 credits</span>
+      <strong>€60,00</strong>
+      <em>Populair · €6,00 per training</em>
+    </div>
+
+    <div className="price-row best">
+      <span>20 credits</span>
+      <strong>€100,00</strong>
+      <em>Beste deal · €5,00 per training</em>
+    </div>
+  </div>
+</section>
           </section>
         )}
 
