@@ -7,6 +7,7 @@ type Profile = {
   id: string;
   username: string;
   role: "customer" | "admin";
+  credits: number;
 };
 
 type Booking = {
@@ -40,6 +41,9 @@ function App() {
   const [newDescription, setNewDescription] = useState("");
   const [newDate, setNewDate] = useState("");
   const [newTime, setNewTime] = useState("");
+
+  const [creditEmail, setCreditEmail] = useState("");
+  const [creditAmount, setCreditAmount] = useState("10");
 
   const [message, setMessage] = useState("Laden...");
 
@@ -76,7 +80,7 @@ function App() {
 
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
-      .select("id, username, role")
+      .select("id, username, role, credits")
       .eq("id", currentUser.id)
       .single();
 
@@ -155,6 +159,7 @@ function App() {
       id: data.user.id,
       username,
       role: "customer",
+      credits: 0,
     });
 
     if (profileError) {
@@ -228,6 +233,36 @@ function App() {
     await loadAppData(user);
   }
 
+  async function addCreditsToUser() {
+    if (!user || !profile || profile.role !== "admin") {
+      setMessage("Alleen admin kan credits toevoegen.");
+      return;
+    }
+
+    const amount = Number(creditAmount);
+
+    if (!creditEmail || !Number.isInteger(amount) || amount <= 0) {
+      setMessage("Vul een geldig e-mailadres en aantal credits in.");
+      return;
+    }
+
+    const { error } = await supabase.rpc("admin_add_credits_by_email", {
+      p_email: creditEmail.trim(),
+      p_amount: amount,
+    });
+
+    if (error) {
+      setMessage("Credits toevoegen fout: " + error.message);
+      return;
+    }
+
+    setMessage(`${amount} credits toegevoegd aan ${creditEmail}.`);
+    setCreditEmail("");
+    setCreditAmount("10");
+
+    await loadAppData(user);
+  }
+
   async function deleteLesson(lessonId: string) {
     if (!user || !profile || profile.role !== "admin") {
       setMessage("Alleen admin kan lessen verwijderen.");
@@ -256,9 +291,8 @@ function App() {
   async function bookLesson(lessonId: string) {
     if (!user) return;
 
-    const { error } = await supabase.from("bookings").insert({
-      lesson_id: lessonId,
-      user_id: user.id,
+    const { error } = await supabase.rpc("book_lesson_with_credit", {
+      p_lesson_id: lessonId,
     });
 
     if (error) {
@@ -266,7 +300,7 @@ function App() {
       return;
     }
 
-    setMessage("Je bent aangemeld.");
+    setMessage("Je bent aangemeld. 1 credit gebruikt.");
     await loadAppData(user);
   }
 
@@ -280,14 +314,16 @@ function App() {
       return;
     }
 
-    const { error } = await supabase.from("bookings").delete().eq("id", ownBooking.id);
+    const { error } = await supabase.rpc("cancel_booking_with_refund", {
+      p_lesson_id: lesson.id,
+    });
 
     if (error) {
       setMessage("Afmelden fout: " + error.message);
       return;
     }
 
-    setMessage("Je bent afgemeld.");
+    setMessage("Je bent afgemeld. 1 credit teruggezet.");
     await loadAppData(user);
   }
 
@@ -321,6 +357,8 @@ function App() {
   const selectedLesson = lessons.find((lesson) => lesson.id === selectedLessonId) ?? null;
   const userIsBooked =
     selectedLesson?.bookings.some((booking) => booking.user_id === user?.id) ?? false;
+
+  const userCredits = profile?.credits ?? 0;
 
   if (!user) {
     return (
@@ -432,67 +470,112 @@ function App() {
           </article>
 
           <article className="stat-card">
+            <span>Credits</span>
+            <strong>{userCredits}</strong>
+          </article>
+
+          <article className="stat-card">
             <span>Status</span>
             <strong>{profile?.role === "admin" ? "Admin" : "Klant"}</strong>
           </article>
         </section>
 
         {profile?.role === "admin" && (
-          <section className="admin-box">
-            <div className="section-heading">
-              <div>
-                <h2>Nieuwe les toevoegen</h2>
-                <p>Maak een training aan die klanten direct kunnen zien.</p>
-              </div>
-            </div>
-
-            <div className="form-grid">
-              <div className="form-field form-wide">
-                <label className="label">Titel</label>
-                <input
-                  className="input"
-                  type="text"
-                  placeholder="Bijvoorbeeld Personal training"
-                  value={newTitle}
-                  onChange={(event) => setNewTitle(event.target.value)}
-                />
+          <>
+            <section className="admin-box">
+              <div className="section-heading">
+                <div>
+                  <h2>Nieuwe les toevoegen</h2>
+                  <p>Maak een training aan die klanten direct kunnen zien.</p>
+                </div>
               </div>
 
-              <div className="form-field">
-                <label className="label">Datum</label>
-                <input
-                  className="input"
-                  type="date"
-                  value={newDate}
-                  onChange={(event) => setNewDate(event.target.value)}
-                />
+              <div className="form-grid">
+                <div className="form-field form-wide">
+                  <label className="label">Titel</label>
+                  <input
+                    className="input"
+                    type="text"
+                    placeholder="Bijvoorbeeld Personal training"
+                    value={newTitle}
+                    onChange={(event) => setNewTitle(event.target.value)}
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label className="label">Datum</label>
+                  <input
+                    className="input"
+                    type="date"
+                    value={newDate}
+                    onChange={(event) => setNewDate(event.target.value)}
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label className="label">Tijd</label>
+                  <input
+                    className="input"
+                    type="time"
+                    value={newTime}
+                    onChange={(event) => setNewTime(event.target.value)}
+                  />
+                </div>
+
+                <div className="form-field form-wide">
+                  <label className="label">Beschrijving</label>
+                  <textarea
+                    className="textarea"
+                    placeholder="Korte beschrijving van de les"
+                    value={newDescription}
+                    onChange={(event) => setNewDescription(event.target.value)}
+                  />
+                </div>
               </div>
 
-              <div className="form-field">
-                <label className="label">Tijd</label>
-                <input
-                  className="input"
-                  type="time"
-                  value={newTime}
-                  onChange={(event) => setNewTime(event.target.value)}
-                />
+              <button className="primary-button" onClick={createLesson}>
+                Les toevoegen
+              </button>
+            </section>
+
+            <section className="admin-box">
+              <div className="section-heading">
+                <div>
+                  <h2>Credits toevoegen</h2>
+                  <p>Voeg handmatig credits toe nadat een klant heeft betaald.</p>
+                </div>
               </div>
 
-              <div className="form-field form-wide">
-                <label className="label">Beschrijving</label>
-                <textarea
-                  className="textarea"
-                  placeholder="Korte beschrijving van de les"
-                  value={newDescription}
-                  onChange={(event) => setNewDescription(event.target.value)}
-                />
-              </div>
-            </div>
+              <div className="form-grid">
+                <div className="form-field">
+                  <label className="label">User e-mail</label>
+                  <input
+                    className="input"
+                    type="email"
+                    placeholder="klant@email.nl"
+                    value={creditEmail}
+                    onChange={(event) => setCreditEmail(event.target.value)}
+                  />
+                </div>
 
-            <button className="primary-button" onClick={createLesson}>
-              Les toevoegen
-            </button>
-          </section>
+                <div className="form-field">
+                  <label className="label">Aantal credits</label>
+                  <input
+                    className="input"
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={creditAmount}
+                    onChange={(event) => setCreditAmount(event.target.value)}
+                  />
+                </div>
+              </div>
+
+              <button className="primary-button" onClick={addCreditsToUser}>
+                Add {creditAmount || "x"} credits to {creditEmail || "x user (email)"}
+              </button>
+            </section>
+          </>
         )}
 
         <section className="content-grid">
@@ -568,9 +651,7 @@ function App() {
                   {userIsBooked && <span className="booked-badge">Je bent aangemeld</span>}
                 </div>
 
-                <div className="description-box">
-                  {selectedLesson.description}
-                </div>
+                <div className="description-box">{selectedLesson.description}</div>
 
                 <div className="attendees-section">
                   <h3>Aangemeld</h3>
@@ -589,12 +670,16 @@ function App() {
                 </div>
 
                 {!userIsBooked ? (
-                  <button className="primary-button" onClick={() => bookLesson(selectedLesson.id)}>
-                    Aanmelden
+                  <button
+                    className={userCredits <= 0 ? "disabled-button" : "primary-button"}
+                    disabled={userCredits <= 0}
+                    onClick={() => bookLesson(selectedLesson.id)}
+                  >
+                    {userCredits <= 0 ? "Geen credits beschikbaar" : "Aanmelden - 1 credit"}
                   </button>
                 ) : (
                   <button className="warning-button" onClick={() => cancelBooking(selectedLesson)}>
-                    Afmelden
+                    Afmelden + 1 credit terug
                   </button>
                 )}
 
