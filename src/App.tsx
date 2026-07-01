@@ -22,6 +22,7 @@ type Lesson = {
   description: string;
   lesson_date: string;
   lesson_time: string;
+  max_participants: number;
   bookings: Booking[];
 };
 
@@ -44,6 +45,7 @@ function App() {
   const [newDescription, setNewDescription] = useState("");
   const [newDate, setNewDate] = useState("");
   const [newTime, setNewTime] = useState("");
+  const [newMaxParticipants, setNewMaxParticipants] = useState("10");
 
   const [creditEmail, setCreditEmail] = useState("");
   const [creditAmount, setCreditAmount] = useState("10");
@@ -111,6 +113,7 @@ function App() {
         description,
         lesson_date,
         lesson_time,
+        max_participants,
         bookings (
           id,
           user_id,
@@ -217,18 +220,28 @@ function App() {
       return;
     }
 
-    if (!newTitle || !newDescription || !newDate || !newTime) {
-      setMessage("Vul titel, beschrijving, datum en tijd in.");
-      return;
-    }
+    const maxParticipants = Number(newMaxParticipants);
+
+if (
+  !newTitle ||
+  !newDescription ||
+  !newDate ||
+  !newTime ||
+  !Number.isInteger(maxParticipants) ||
+  maxParticipants <= 0
+) {
+  setMessage("Vul titel, beschrijving, datum, tijd en max deelnemers in.");
+  return;
+}
 
     const { error } = await supabase.from("lessons").insert({
-      title: newTitle,
-      description: newDescription,
-      lesson_date: newDate,
-      lesson_time: newTime,
-      created_by: user.id,
-    });
+  title: newTitle,
+  description: newDescription,
+  lesson_date: newDate,
+  lesson_time: newTime,
+  max_participants: maxParticipants,
+  created_by: user.id,
+});
 
     if (error) {
       setMessage("Les toevoegen fout: " + error.message);
@@ -239,6 +252,7 @@ function App() {
     setNewDescription("");
     setNewDate("");
     setNewTime("");
+    setNewMaxParticipants("10");
     setMessage("Les toegevoegd.");
 
     await loadAppData(user);
@@ -367,9 +381,12 @@ function App() {
   }
 
   const selectedLesson = lessons.find((lesson) => lesson.id === selectedLessonId) ?? null;
-  const userIsBooked =
-    selectedLesson?.bookings.some((booking) => booking.user_id === user?.id) ?? false;
-  const userCredits = profile?.credits ?? 0;
+const userIsBooked =
+  selectedLesson?.bookings.some((booking) => booking.user_id === user?.id) ?? false;
+const selectedLessonIsFull = selectedLesson
+  ? selectedLesson.bookings.length >= selectedLesson.max_participants
+  : false;
+const userCredits = profile?.credits ?? 0;
   
   if (!user) {
     return (
@@ -524,7 +541,9 @@ function App() {
 
                         <div className="lesson-info">
                           <strong>{lesson.title}</strong>
-                          <span>{lesson.bookings.length} aangemeld</span>
+                          <span>
+  {lesson.bookings.length}/{lesson.max_participants} plekken bezet
+</span>
                         </div>
 
                         {isBooked && <span className="status-pill">Aangemeld</span>}
@@ -549,7 +568,9 @@ function App() {
                       {formatDate(selectedLesson.lesson_date)} om{" "}
                       {formatTime(selectedLesson.lesson_time)} uur
                     </p>
-
+<p className="lesson-capacity">
+  {selectedLesson.bookings.length}/{selectedLesson.max_participants} plekken bezet
+</p>
                     {userIsBooked && <span className="status-pill large">Je bent aangemeld</span>}
 
                     <div className="description-card">{selectedLesson.description}</div>
@@ -572,12 +593,18 @@ function App() {
 
                     {!userIsBooked ? (
                       <button
-                        className={userCredits <= 0 ? "disabled-btn" : "primary-btn"}
-                        disabled={userCredits <= 0}
-                        onClick={() => bookLesson(selectedLesson.id)}
-                      >
-                        {userCredits <= 0 ? "Geen credits beschikbaar" : "Aanmelden -1 credit"}
-                      </button>
+  className={
+    userCredits <= 0 || selectedLessonIsFull ? "disabled-btn" : "primary-btn"
+  }
+  disabled={userCredits <= 0 || selectedLessonIsFull}
+  onClick={() => bookLesson(selectedLesson.id)}
+>
+  {selectedLessonIsFull
+    ? "Les zit vol"
+    : userCredits <= 0
+      ? "Geen credits beschikbaar"
+      : "Aanmelden -1 credit"}
+</button>
                     ) : (
                       <button className="warning-btn" onClick={() => cancelBooking(selectedLesson)}>
                         Afmelden +1 credit
@@ -667,26 +694,36 @@ function App() {
           />
 
           <div className="form-grid">
-            <div>
-              <label className="form-label">Datum</label>
-              <input
-                className="form-input"
-                type="date"
-                value={newDate}
-                onChange={(event) => setNewDate(event.target.value)}
-              />
-            </div>
+  <div>
+    <label className="form-label">Datum</label>
+    <input
+      className="form-input"
+      type="date"
+      value={newDate}
+      onChange={(event) => setNewDate(event.target.value)}
+    />
+  </div>
 
-            <div>
-              <label className="form-label">Tijd</label>
-              <input
-                className="form-input"
-                type="time"
-                value={newTime}
-                onChange={(event) => setNewTime(event.target.value)}
-              />
-            </div>
-          </div>
+  <div>
+    <label className="form-label">Tijd</label>
+    <input
+      className="form-input"
+      type="time"
+      value={newTime}
+      onChange={(event) => setNewTime(event.target.value)}
+    />
+  </div>
+</div>
+
+<label className="form-label">Max deelnemers</label>
+<input
+  className="form-input"
+  type="number"
+  min="1"
+  step="1"
+  value={newMaxParticipants}
+  onChange={(event) => setNewMaxParticipants(event.target.value)}
+/>
 
           <label className="form-label">Beschrijving</label>
           <textarea
