@@ -866,6 +866,10 @@ const userCredits = profile?.credits ?? 0;
   <strong>Credits op?</strong>
   <p>Neem contact op met Tony om nieuwe credits te kopen.</p>
 
+<div className="discount-banner">
+  Eerste aankoop: 50% korting!
+</div>
+
   <div className="price-table">
     <div className="price-row">
       <span>1 credit</span>
