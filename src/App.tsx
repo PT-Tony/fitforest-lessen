@@ -25,12 +25,15 @@ type Lesson = {
   bookings: Booking[];
 };
 
+type View = "lessons" | "credits" | "admin";
+
 function App() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
 
   const [mode, setMode] = useState<"login" | "register">("login");
+  const [activeView, setActiveView] = useState<View>("lessons");
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
 
   const [email, setEmail] = useState("");
@@ -72,8 +75,15 @@ function App() {
       setProfile(null);
       setLessons([]);
       setSelectedLessonId(null);
+      setActiveView("lessons");
     }
   }, [user]);
+
+  useEffect(() => {
+    if (profile?.role !== "admin" && activeView === "admin") {
+      setActiveView("lessons");
+    }
+  }, [profile, activeView]);
 
   async function loadAppData(currentUser: User) {
     setMessage("Lessen laden...");
@@ -197,6 +207,7 @@ function App() {
     setProfile(null);
     setLessons([]);
     setSelectedLessonId(null);
+    setActiveView("lessons");
     setMessage("Je bent uitgelogd.");
   }
 
@@ -231,6 +242,7 @@ function App() {
     setMessage("Les toegevoegd.");
 
     await loadAppData(user);
+    setActiveView("lessons");
   }
 
   async function addCreditsToUser() {
@@ -357,48 +369,49 @@ function App() {
   const selectedLesson = lessons.find((lesson) => lesson.id === selectedLessonId) ?? null;
   const userIsBooked =
     selectedLesson?.bookings.some((booking) => booking.user_id === user?.id) ?? false;
-
   const userCredits = profile?.credits ?? 0;
+  const userBookings = lessons.filter((lesson) =>
+    lesson.bookings.some((booking) => booking.user_id === user?.id)
+  ).length;
 
   if (!user) {
     return (
-      <main className="page auth-page">
+      <main className="auth-page">
         <section className="auth-card">
-          <div className="brand-pill">PT Rooster</div>
-
-          <h1 className="auth-title">Training boeken</h1>
+          <p className="eyebrow">Training Rooster | Tony</p>
+          <h1>Boek je training</h1>
           <p className="auth-subtitle">
-            Log in en meld je gemakkelijk aan voor je volgende training.
+            Log in, bekijk aankomende lessen en meld je makkelijk aan.
           </p>
 
-          <div className="tabs">
+          <div className="auth-tabs">
             <button
-              className={mode === "login" ? "tab active-tab" : "tab"}
+              className={mode === "login" ? "auth-tab active" : "auth-tab"}
               onClick={() => setMode("login")}
             >
               Inloggen
             </button>
 
             <button
-              className={mode === "register" ? "tab active-tab" : "tab"}
+              className={mode === "register" ? "auth-tab active" : "auth-tab"}
               onClick={() => setMode("register")}
             >
               Account maken
             </button>
           </div>
 
-          <label className="label">E-mail</label>
+          <label className="form-label">E-mail</label>
           <input
-            className="input"
+            className="form-input"
             type="email"
             placeholder="jouw@email.nl"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
           />
 
-          <label className="label">Wachtwoord</label>
+          <label className="form-label">Wachtwoord</label>
           <input
-            className="input"
+            className="form-input"
             type="password"
             placeholder="Je wachtwoord"
             value={password}
@@ -407,9 +420,9 @@ function App() {
 
           {mode === "register" && (
             <>
-              <label className="label">Username</label>
+              <label className="form-label">Username</label>
               <input
-                className="input"
+                className="form-input"
                 type="text"
                 placeholder="Bijvoorbeeld Tony"
                 value={username}
@@ -419,282 +432,336 @@ function App() {
           )}
 
           {mode === "login" ? (
-            <button className="primary-button" onClick={login}>
+            <button className="primary-btn" onClick={login}>
               Inloggen
             </button>
           ) : (
-            <button className="primary-button" onClick={register}>
+            <button className="primary-btn" onClick={register}>
               Account maken
             </button>
           )}
 
-          {message && <p className="message">{message}</p>}
+          {message && <p className="notice">{message}</p>}
         </section>
       </main>
     );
   }
 
   return (
-    <main className="page">
-      <section className="app-shell">
-        <header className="topbar">
+    <main className="app-page">
+      <section className="app-container">
+        <header className="app-header">
           <div>
-            <div className="brand-pill">PT Rooster</div>
-            <h1 className="page-title">Lessenagenda</h1>
-            <p className="muted">
-              Ingelogd als <strong>{profile?.username ?? user.email}</strong>
+            <p className="eyebrow">Training Rooster | Tony</p>
+            <h1>Rooster</h1>
+            <p className="header-meta">
+              {profile?.username ?? user.email}
               {profile?.role === "admin" ? " · Admin" : ""}
             </p>
           </div>
 
-          <button className="secondary-button" onClick={logout}>
+          <button className="logout-btn" onClick={logout}>
             Uitloggen
           </button>
         </header>
 
-        {message && <p className="message">{message}</p>}
+        <nav className="main-tabs">
+          <button
+            className={activeView === "lessons" ? "main-tab active" : "main-tab"}
+            onClick={() => setActiveView("lessons")}
+          >
+            Lessen
+          </button>
 
-        <section className="stats-grid">
-          <article className="stat-card">
-            <span>Aankomende lessen</span>
-            <strong>{lessons.length}</strong>
-          </article>
+          <button
+            className={activeView === "credits" ? "main-tab active" : "main-tab"}
+            onClick={() => setActiveView("credits")}
+          >
+            Credits
+          </button>
 
-          <article className="stat-card">
-            <span>Jouw aanmeldingen</span>
-            <strong>
-              {lessons.filter((lesson) =>
-                lesson.bookings.some((booking) => booking.user_id === user.id)
-              ).length}
-            </strong>
-          </article>
+          {profile?.role === "admin" && (
+            <button
+              className={activeView === "admin" ? "main-tab active" : "main-tab"}
+              onClick={() => setActiveView("admin")}
+            >
+              Admin
+            </button>
+          )}
+        </nav>
 
-          <article className="stat-card">
-            <span>Credits</span>
-            <strong>{userCredits}</strong>
-          </article>
+        {message && <p className="notice">{message}</p>}
 
-          <article className="stat-card">
-            <span>Status</span>
-            <strong>{profile?.role === "admin" ? "Admin" : "Klant"}</strong>
-          </article>
-        </section>
+        {activeView === "lessons" && (
+          <section className="view">
+            <div className="summary-row">
+              <article className="summary-card">
+                <span>Credits</span>
+                <strong>{userCredits}</strong>
+              </article>
 
-        {profile?.role === "admin" && (
-          <>
-            <section className="admin-box">
-              <div className="section-heading">
-                <div>
-                  <h2>Nieuwe les toevoegen</h2>
-                  <p>Maak een training aan die klanten direct kunnen zien.</p>
-                </div>
-              </div>
-
-              <div className="form-grid">
-                <div className="form-field form-wide">
-                  <label className="label">Titel</label>
-                  <input
-                    className="input"
-                    type="text"
-                    placeholder="Bijvoorbeeld Personal training"
-                    value={newTitle}
-                    onChange={(event) => setNewTitle(event.target.value)}
-                  />
-                </div>
-
-                <div className="form-field">
-                  <label className="label">Datum</label>
-                  <input
-                    className="input"
-                    type="date"
-                    value={newDate}
-                    onChange={(event) => setNewDate(event.target.value)}
-                  />
-                </div>
-
-                <div className="form-field">
-                  <label className="label">Tijd</label>
-                  <input
-                    className="input"
-                    type="time"
-                    value={newTime}
-                    onChange={(event) => setNewTime(event.target.value)}
-                  />
-                </div>
-
-                <div className="form-field form-wide">
-                  <label className="label">Beschrijving</label>
-                  <textarea
-                    className="textarea"
-                    placeholder="Korte beschrijving van de les"
-                    value={newDescription}
-                    onChange={(event) => setNewDescription(event.target.value)}
-                  />
-                </div>
-              </div>
-
-              <button className="primary-button" onClick={createLesson}>
-                Les toevoegen
-              </button>
-            </section>
-
-            <section className="admin-box">
-              <div className="section-heading">
-                <div>
-                  <h2>Credits toevoegen</h2>
-                  <p>Voeg handmatig credits toe nadat een klant heeft betaald.</p>
-                </div>
-              </div>
-
-              <div className="form-grid">
-                <div className="form-field">
-                  <label className="label">User e-mail</label>
-                  <input
-                    className="input"
-                    type="email"
-                    placeholder="klant@email.nl"
-                    value={creditEmail}
-                    onChange={(event) => setCreditEmail(event.target.value)}
-                  />
-                </div>
-
-                <div className="form-field">
-                  <label className="label">Aantal credits</label>
-                  <input
-                    className="input"
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={creditAmount}
-                    onChange={(event) => setCreditAmount(event.target.value)}
-                  />
-                </div>
-              </div>
-
-              <button className="primary-button" onClick={addCreditsToUser}>
-                Add {creditAmount || "x"} credits to {creditEmail || "x user (email)"}
-              </button>
-            </section>
-          </>
-        )}
-
-        <section className="content-grid">
-          <section className="panel lessons-panel">
-            <div className="section-heading">
-              <div>
-                <h2>Aankomende lessen</h2>
-                <p>Kies een les om details te bekijken.</p>
-              </div>
+              <article className="summary-card">
+                <span>Aanmeldingen</span>
+                <strong>{userBookings}</strong>
+              </article>
             </div>
 
-            {lessons.length === 0 && (
-              <div className="empty-state">
-                <strong>Geen lessen gepland</strong>
-                <span>Er staan op dit moment nog geen trainingen online.</span>
+            <section className="lessons-layout">
+              <div className="card">
+                <div className="card-heading">
+                  <h2>Aankomende lessen</h2>
+                  <p>Kies een training en bekijk de details.</p>
+                </div>
+
+                {lessons.length === 0 && (
+                  <div className="empty-box">
+                    <strong>Geen lessen gepland</strong>
+                    <span>Er staan op dit moment geen trainingen online.</span>
+                  </div>
+                )}
+
+                <div className="lesson-list">
+                  {lessons.map((lesson) => {
+                    const isActive = selectedLessonId === lesson.id;
+                    const isBooked = lesson.bookings.some((booking) => booking.user_id === user.id);
+
+                    return (
+                      <button
+                        key={lesson.id}
+                        className={isActive ? "lesson-item active" : "lesson-item"}
+                        onClick={() => setSelectedLessonId(lesson.id)}
+                      >
+                        <div className="date-box">
+                          <span>{formatShortDate(lesson.lesson_date)}</span>
+                          <strong>{formatTime(lesson.lesson_time)}</strong>
+                        </div>
+
+                        <div className="lesson-info">
+                          <strong>{lesson.title}</strong>
+                          <span>{lesson.bookings.length} aangemeld</span>
+                        </div>
+
+                        {isBooked && <span className="status-pill">Aangemeld</span>}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            )}
 
-            <div className="lesson-list">
-              {lessons.map((lesson) => {
-                const isActive = selectedLessonId === lesson.id;
-                const isBooked = lesson.bookings.some((booking) => booking.user_id === user.id);
+              <div className="card">
+                <div className="card-heading">
+                  <h2>Lesinformatie</h2>
+                  <p>Bekijk de training en meld je aan of af.</p>
+                </div>
 
-                return (
-                  <button
-                    key={lesson.id}
-                    className={isActive ? "lesson-card active-lesson" : "lesson-card"}
-                    onClick={() => setSelectedLessonId(lesson.id)}
-                  >
-                    <div className="lesson-date-badge">
-                      <span>{formatShortDate(lesson.lesson_date)}</span>
-                      <strong>{formatTime(lesson.lesson_time)}</strong>
-                    </div>
+                {!selectedLesson && (
+                  <div className="empty-box">
+                    <strong>Selecteer een les</strong>
+                    <span>Klik op een les om de informatie te bekijken.</span>
+                  </div>
+                )}
 
-                    <div className="lesson-card-content">
-                      <strong>{lesson.title}</strong>
-                      <span>{lesson.bookings.length} aangemeld</span>
-                    </div>
-
-                    {isBooked && <span className="booked-badge">Aangemeld</span>}
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className="panel details-panel">
-            <div className="section-heading">
-              <div>
-                <h2>Lesinformatie</h2>
-                <p>Bekijk de training en meld je aan of af.</p>
-              </div>
-            </div>
-
-            {!selectedLesson && (
-              <div className="empty-state">
-                <strong>Selecteer een les</strong>
-                <span>Klik op een les om de informatie te bekijken.</span>
-              </div>
-            )}
-
-            {selectedLesson && (
-              <div className="lesson-details">
-                <div className="details-header">
-                  <div>
+                {selectedLesson && (
+                  <div className="lesson-detail">
                     <h3>{selectedLesson.title}</h3>
-                    <p>
+                    <p className="lesson-time">
                       {formatDate(selectedLesson.lesson_date)} om{" "}
                       {formatTime(selectedLesson.lesson_time)} uur
                     </p>
-                  </div>
 
-                  {userIsBooked && <span className="booked-badge">Je bent aangemeld</span>}
-                </div>
+                    {userIsBooked && <span className="status-pill large">Je bent aangemeld</span>}
 
-                <div className="description-box">{selectedLesson.description}</div>
+                    <div className="description-card">{selectedLesson.description}</div>
 
-                <div className="attendees-section">
-                  <h3>Aangemeld</h3>
+                    <div className="attendees">
+                      <h4>Aangemeld</h4>
 
-                  {selectedLesson.bookings.length === 0 ? (
-                    <p className="muted">Nog niemand aangemeld.</p>
-                  ) : (
-                    <div className="attendee-list">
-                      {selectedLesson.bookings.map((booking) => (
-                        <span key={booking.id} className="attendee-chip">
-                          {getBookingUsername(booking)}
-                        </span>
-                      ))}
+                      {selectedLesson.bookings.length === 0 ? (
+                        <p className="small-muted">Nog niemand aangemeld.</p>
+                      ) : (
+                        <div className="attendee-list">
+                          {selectedLesson.bookings.map((booking) => (
+                            <span key={booking.id} className="attendee">
+                              {getBookingUsername(booking)}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
 
-                {!userIsBooked ? (
-                  <button
-                    className={userCredits <= 0 ? "disabled-button" : "primary-button"}
-                    disabled={userCredits <= 0}
-                    onClick={() => bookLesson(selectedLesson.id)}
-                  >
-                    {userCredits <= 0 ? "Geen credits beschikbaar" : "Aanmelden - 1 credit"}
-                  </button>
-                ) : (
-                  <button className="warning-button" onClick={() => cancelBooking(selectedLesson)}>
-                    Afmelden + 1 credit terug
-                  </button>
-                )}
+                    {!userIsBooked ? (
+                      <button
+                        className={userCredits <= 0 ? "disabled-btn" : "primary-btn"}
+                        disabled={userCredits <= 0}
+                        onClick={() => bookLesson(selectedLesson.id)}
+                      >
+                        {userCredits <= 0 ? "Geen credits beschikbaar" : "Aanmelden -1 credit"}
+                      </button>
+                    ) : (
+                      <button className="warning-btn" onClick={() => cancelBooking(selectedLesson)}>
+                        Afmelden +1 credit
+                      </button>
+                    )}
 
-                {profile?.role === "admin" && (
-                  <button
-                    className="delete-button"
-                    onClick={() => deleteLesson(selectedLesson.id)}
-                  >
-                    Les verwijderen
-                  </button>
+                    {profile?.role === "admin" && (
+                      <button
+                        className="danger-btn"
+                        onClick={() => deleteLesson(selectedLesson.id)}
+                      >
+                        Les verwijderen
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
+            </section>
           </section>
+        )}
+
+        {activeView === "credits" && (
+  <section className="view credits-view">
+    <section className="credits-card">
+      <p className="credits-label">Beschikbare credits</p>
+      <strong className="credits-number">{userCredits}</strong>
+      <p className="credits-subtitle">
+        Gebruik je credits om lessen te boeken.
+      </p>
+    </section>
+
+    <section className="credits-rules">
+      <div className="credit-rule">
+        <span>1 credit</span>
+        <strong>1 training</strong>
+      </div>
+
+      <div className="credit-rule">
+        <span>Aanmelden</span>
+        <strong>-1 credit</strong>
+      </div>
+
+      <div className="credit-rule">
+        <span>Afmelden</span>
+        <strong>+1 credit</strong>
+      </div>
+    </section>
+
+    <section className="credits-note">
+      <strong>Credits op?</strong>
+      <p>
+        Neem contact op met Tony om nieuwe credits te kopen.
+      </p>
+    </section>
+  </section>
+)}
+
+        {activeView === "admin" && profile?.role === "admin" && (
+  <section className="view">
+    <section className="admin-dashboard">
+      <div className="admin-header-card">
+        <div>
+          <p className="admin-kicker">Admin paneel</p>
+          <h2>Beheer je rooster</h2>
+          <p>
+            Voeg lessen toe en beheer credits van klanten vanuit één overzicht.
+          </p>
+        </div>
+      </div>
+
+      <div className="admin-tools-grid">
+        <section className="card admin-tool-card">
+          <div className="admin-tool-header">
+            <div>
+              <h2>Nieuwe les toevoegen</h2>
+              <p>Maak een training aan die klanten direct kunnen boeken.</p>
+            </div>
+          </div>
+
+          <label className="form-label">Titel</label>
+          <input
+            className="form-input"
+            type="text"
+            placeholder="Bijvoorbeeld Boxen"
+            value={newTitle}
+            onChange={(event) => setNewTitle(event.target.value)}
+          />
+
+          <div className="form-grid">
+            <div>
+              <label className="form-label">Datum</label>
+              <input
+                className="form-input"
+                type="date"
+                value={newDate}
+                onChange={(event) => setNewDate(event.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="form-label">Tijd</label>
+              <input
+                className="form-input"
+                type="time"
+                value={newTime}
+                onChange={(event) => setNewTime(event.target.value)}
+              />
+            </div>
+          </div>
+
+          <label className="form-label">Beschrijving</label>
+          <textarea
+            className="form-textarea"
+            placeholder="Korte beschrijving van de les"
+            value={newDescription}
+            onChange={(event) => setNewDescription(event.target.value)}
+          />
+
+          <button className="primary-btn" onClick={createLesson}>
+            Les toevoegen
+          </button>
         </section>
+
+        <section className="card admin-tool-card">
+          <div className="admin-tool-header">
+            <div>
+              <h2>Credits toevoegen</h2>
+              <p>Voeg credits toe nadat een klant heeft betaald.</p>
+            </div>
+          </div>
+
+          <label className="form-label">Klant e-mail</label>
+          <input
+            className="form-input"
+            type="email"
+            placeholder="klant@email.nl"
+            value={creditEmail}
+            onChange={(event) => setCreditEmail(event.target.value)}
+          />
+
+          <label className="form-label">Aantal credits</label>
+          <input
+            className="form-input"
+            type="number"
+            min="1"
+            step="1"
+            value={creditAmount}
+            onChange={(event) => setCreditAmount(event.target.value)}
+          />
+
+          <button className="primary-btn" onClick={addCreditsToUser}>
+            Credits toevoegen
+          </button>
+
+          <div className="admin-note">
+            <strong>Let op:</strong>
+            <span>
+              De klant moet eerst een account hebben voordat je credits kunt toevoegen.
+            </span>
+          </div>
+        </section>
+      </div>
+    </section>
+  </section>
+        )}
       </section>
     </main>
   );
