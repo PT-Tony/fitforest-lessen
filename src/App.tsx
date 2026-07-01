@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import type { CSSProperties } from "react";
 import { supabase } from "./lib/supabase";
 import type { User } from "@supabase/supabase-js";
+import "./App.css";
 
 type Profile = {
   id: string;
@@ -67,6 +67,7 @@ function App() {
     } else {
       setProfile(null);
       setLessons([]);
+      setSelectedLessonId(null);
     }
   }, [user]);
 
@@ -113,7 +114,17 @@ function App() {
       return;
     }
 
-    setLessons((lessonsData as Lesson[]) ?? []);
+    const loadedLessons = (lessonsData as Lesson[]) ?? [];
+    setLessons(loadedLessons);
+
+    setSelectedLessonId((current) => {
+      if (current && loadedLessons.some((lesson) => lesson.id === current)) {
+        return current;
+      }
+
+      return loadedLessons[0]?.id ?? null;
+    });
+
     setMessage("");
   }
 
@@ -296,6 +307,13 @@ function App() {
     });
   }
 
+  function formatShortDate(date: string) {
+    return new Date(date + "T00:00:00").toLocaleDateString("nl-NL", {
+      day: "numeric",
+      month: "short",
+    });
+  }
+
   function formatTime(time: string) {
     return time.slice(0, 5);
   }
@@ -306,49 +324,54 @@ function App() {
 
   if (!user) {
     return (
-      <main style={styles.page}>
-        <section style={styles.card}>
-          <h1 style={styles.title}>PT uren Rooster</h1>
+      <main className="page auth-page">
+        <section className="auth-card">
+          <div className="brand-pill">PT Rooster</div>
 
-          <div style={styles.tabs}>
+          <h1 className="auth-title">Training boeken</h1>
+          <p className="auth-subtitle">
+            Log in en meld je gemakkelijk aan voor je volgende training.
+          </p>
+
+          <div className="tabs">
             <button
-              style={mode === "login" ? styles.activeTab : styles.tab}
+              className={mode === "login" ? "tab active-tab" : "tab"}
               onClick={() => setMode("login")}
             >
               Inloggen
             </button>
 
             <button
-              style={mode === "register" ? styles.activeTab : styles.tab}
+              className={mode === "register" ? "tab active-tab" : "tab"}
               onClick={() => setMode("register")}
             >
               Account maken
             </button>
           </div>
 
-          <label style={styles.label}>E-mail</label>
+          <label className="label">E-mail</label>
           <input
-            style={styles.input}
+            className="input"
             type="email"
             placeholder="jouw@email.nl"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
           />
 
-          <label style={styles.label}>Wachtwoord</label>
+          <label className="label">Wachtwoord</label>
           <input
-            style={styles.input}
+            className="input"
             type="password"
-            placeholder="Kies een wachtwoord"
+            placeholder="Je wachtwoord"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
           />
 
           {mode === "register" && (
             <>
-              <label style={styles.label}>Username</label>
+              <label className="label">Username</label>
               <input
-                style={styles.input}
+                className="input"
                 type="text"
                 placeholder="Bijvoorbeeld Tony"
                 value={username}
@@ -358,442 +381,238 @@ function App() {
           )}
 
           {mode === "login" ? (
-            <button style={styles.button} onClick={login}>
+            <button className="primary-button" onClick={login}>
               Inloggen
             </button>
           ) : (
-            <button style={styles.button} onClick={register}>
+            <button className="primary-button" onClick={register}>
               Account maken
             </button>
           )}
 
-          {message && <p style={styles.message}>{message}</p>}
+          {message && <p className="message">{message}</p>}
         </section>
       </main>
     );
   }
 
   return (
-    <main style={styles.page}>
-      <section style={styles.appShell}>
-        <header style={styles.header}>
+    <main className="page">
+      <section className="app-shell">
+        <header className="topbar">
           <div>
-            <h1 style={styles.title}>FitForest Lessen</h1>
-            <p style={styles.smallText}>
-              Ingelogd als {profile?.username ?? user.email}
+            <div className="brand-pill">PT Rooster</div>
+            <h1 className="page-title">Lessenagenda</h1>
+            <p className="muted">
+              Ingelogd als <strong>{profile?.username ?? user.email}</strong>
               {profile?.role === "admin" ? " · Admin" : ""}
             </p>
           </div>
 
-          <button style={styles.logoutButton} onClick={logout}>
+          <button className="secondary-button" onClick={logout}>
             Uitloggen
           </button>
         </header>
 
-        {message && <p style={styles.message}>{message}</p>}
+        {message && <p className="message">{message}</p>}
+
+        <section className="stats-grid">
+          <article className="stat-card">
+            <span>Aankomende lessen</span>
+            <strong>{lessons.length}</strong>
+          </article>
+
+          <article className="stat-card">
+            <span>Jouw aanmeldingen</span>
+            <strong>
+              {lessons.filter((lesson) =>
+                lesson.bookings.some((booking) => booking.user_id === user.id)
+              ).length}
+            </strong>
+          </article>
+
+          <article className="stat-card">
+            <span>Status</span>
+            <strong>{profile?.role === "admin" ? "Admin" : "Klant"}</strong>
+          </article>
+        </section>
 
         {profile?.role === "admin" && (
-          <section style={styles.adminBox}>
-            <h2 style={styles.sectionTitle}>Nieuwe les toevoegen</h2>
+          <section className="admin-box">
+            <div className="section-heading">
+              <div>
+                <h2>Nieuwe les toevoegen</h2>
+                <p>Maak een training aan die klanten direct kunnen zien.</p>
+              </div>
+            </div>
 
-            <label style={styles.label}>Titel</label>
-            <input
-              style={styles.input}
-              type="text"
-              placeholder="Bijvoorbeeld Personal training les"
-              value={newTitle}
-              onChange={(event) => setNewTitle(event.target.value)}
-            />
+            <div className="form-grid">
+              <div className="form-field form-wide">
+                <label className="label">Titel</label>
+                <input
+                  className="input"
+                  type="text"
+                  placeholder="Bijvoorbeeld Personal training"
+                  value={newTitle}
+                  onChange={(event) => setNewTitle(event.target.value)}
+                />
+              </div>
 
-            <label style={styles.label}>Datum</label>
-            <input
-              style={styles.input}
-              type="date"
-              value={newDate}
-              onChange={(event) => setNewDate(event.target.value)}
-            />
+              <div className="form-field">
+                <label className="label">Datum</label>
+                <input
+                  className="input"
+                  type="date"
+                  value={newDate}
+                  onChange={(event) => setNewDate(event.target.value)}
+                />
+              </div>
 
-            <label style={styles.label}>Tijd</label>
-            <input
-              style={styles.input}
-              type="time"
-              value={newTime}
-              onChange={(event) => setNewTime(event.target.value)}
-            />
+              <div className="form-field">
+                <label className="label">Tijd</label>
+                <input
+                  className="input"
+                  type="time"
+                  value={newTime}
+                  onChange={(event) => setNewTime(event.target.value)}
+                />
+              </div>
 
-            <label style={styles.label}>Beschrijving</label>
-            <textarea
-              style={styles.textarea}
-              placeholder="Korte beschrijving van de les"
-              value={newDescription}
-              onChange={(event) => setNewDescription(event.target.value)}
-            />
+              <div className="form-field form-wide">
+                <label className="label">Beschrijving</label>
+                <textarea
+                  className="textarea"
+                  placeholder="Korte beschrijving van de les"
+                  value={newDescription}
+                  onChange={(event) => setNewDescription(event.target.value)}
+                />
+              </div>
+            </div>
 
-            <button style={styles.button} onClick={createLesson}>
+            <button className="primary-button" onClick={createLesson}>
               Les toevoegen
             </button>
           </section>
         )}
 
-        <section style={styles.grid}>
-          <div style={styles.panel}>
-            <h2 style={styles.sectionTitle}>Aankomende lessen</h2>
+        <section className="content-grid">
+          <section className="panel lessons-panel">
+            <div className="section-heading">
+              <div>
+                <h2>Aankomende lessen</h2>
+                <p>Kies een les om details te bekijken.</p>
+              </div>
+            </div>
 
-            {lessons.length === 0 && <p style={styles.smallText}>Er staan nog geen lessen gepland.</p>}
+            {lessons.length === 0 && (
+              <div className="empty-state">
+                <strong>Geen lessen gepland</strong>
+                <span>Er staan op dit moment nog geen trainingen online.</span>
+              </div>
+            )}
 
-            {lessons.map((lesson) => (
-              <button
-                key={lesson.id}
-                style={
-                  selectedLessonId === lesson.id
-                    ? styles.activeLessonCard
-                    : styles.lessonCard
-                }
-                onClick={() => setSelectedLessonId(lesson.id)}
-              >
-                <strong>{lesson.title}</strong>
-                <span>{formatDate(lesson.lesson_date)}</span>
-                <span>{formatTime(lesson.lesson_time)} uur</span>
-                <span>{lesson.bookings.length} aangemeld</span>
-              </button>
-            ))}
-          </div>
+            <div className="lesson-list">
+              {lessons.map((lesson) => {
+                const isActive = selectedLessonId === lesson.id;
+                const isBooked = lesson.bookings.some((booking) => booking.user_id === user.id);
 
-          <div style={styles.panel}>
-            <h2 style={styles.sectionTitle}>Lesinformatie</h2>
+                return (
+                  <button
+                    key={lesson.id}
+                    className={isActive ? "lesson-card active-lesson" : "lesson-card"}
+                    onClick={() => setSelectedLessonId(lesson.id)}
+                  >
+                    <div className="lesson-date-badge">
+                      <span>{formatShortDate(lesson.lesson_date)}</span>
+                      <strong>{formatTime(lesson.lesson_time)}</strong>
+                    </div>
+
+                    <div className="lesson-card-content">
+                      <strong>{lesson.title}</strong>
+                      <span>{lesson.bookings.length} aangemeld</span>
+                    </div>
+
+                    {isBooked && <span className="booked-badge">Aangemeld</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="panel details-panel">
+            <div className="section-heading">
+              <div>
+                <h2>Lesinformatie</h2>
+                <p>Bekijk de training en meld je aan of af.</p>
+              </div>
+            </div>
 
             {!selectedLesson && (
-              <p style={styles.smallText}>Klik links op een les om de informatie te bekijken.</p>
+              <div className="empty-state">
+                <strong>Selecteer een les</strong>
+                <span>Klik op een les om de informatie te bekijken.</span>
+              </div>
             )}
 
             {selectedLesson && (
-              <>
-                <h3 style={styles.lessonTitle}>{selectedLesson.title}</h3>
+              <div className="lesson-details">
+                <div className="details-header">
+                  <div>
+                    <h3>{selectedLesson.title}</h3>
+                    <p>
+                      {formatDate(selectedLesson.lesson_date)} om{" "}
+                      {formatTime(selectedLesson.lesson_time)} uur
+                    </p>
+                  </div>
 
-                <p style={styles.smallText}>
-                  {formatDate(selectedLesson.lesson_date)} om{" "}
-                  {formatTime(selectedLesson.lesson_time)} uur
-                </p>
+                  {userIsBooked && <span className="booked-badge">Je bent aangemeld</span>}
+                </div>
 
-                <p style={styles.description}>{selectedLesson.description}</p>
+                <div className="description-box">
+                  {selectedLesson.description}
+                </div>
 
-                <h3 style={styles.subTitle}>Aangemeld</h3>
+                <div className="attendees-section">
+                  <h3>Aangemeld</h3>
 
-                {selectedLesson.bookings.length === 0 ? (
-                  <p style={styles.smallText}>Nog niemand aangemeld.</p>
-                ) : (
-                  <ul style={styles.list}>
-                    {selectedLesson.bookings.map((booking) => (
-                      <li key={booking.id}>{getBookingUsername(booking)}</li>
-                    ))}
-                  </ul>
-                )}
+                  {selectedLesson.bookings.length === 0 ? (
+                    <p className="muted">Nog niemand aangemeld.</p>
+                  ) : (
+                    <div className="attendee-list">
+                      {selectedLesson.bookings.map((booking) => (
+                        <span key={booking.id} className="attendee-chip">
+                          {getBookingUsername(booking)}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
                 {!userIsBooked ? (
-                  <button style={styles.button} onClick={() => bookLesson(selectedLesson.id)}>
+                  <button className="primary-button" onClick={() => bookLesson(selectedLesson.id)}>
                     Aanmelden
                   </button>
                 ) : (
-                  <button style={styles.dangerButton} onClick={() => cancelBooking(selectedLesson)}>
+                  <button className="warning-button" onClick={() => cancelBooking(selectedLesson)}>
                     Afmelden
                   </button>
                 )}
 
                 {profile?.role === "admin" && (
                   <button
-                    style={styles.deleteButton}
+                    className="delete-button"
                     onClick={() => deleteLesson(selectedLesson.id)}
                   >
                     Les verwijderen
                   </button>
                 )}
-              </>
+              </div>
             )}
-          </div>
+          </section>
         </section>
       </section>
     </main>
   );
 }
-
-const styles: Record<string, CSSProperties> = {
-  page: {
-    minHeight: "100vh",
-    background:
-      "radial-gradient(circle at top left, rgba(34,197,94,0.18), transparent 32%), linear-gradient(135deg, #07111f 0%, #111827 45%, #0b1220 100%)",
-    color: "#f9fafb",
-    fontFamily:
-      "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-    padding: "24px",
-    boxSizing: "border-box",
-  },
-
-  card: {
-    width: "100%",
-    maxWidth: "430px",
-    margin: "90px auto",
-    background: "rgba(15, 23, 42, 0.88)",
-    padding: "32px",
-    borderRadius: "24px",
-    boxShadow: "0 24px 70px rgba(0,0,0,0.45)",
-    border: "1px solid rgba(148,163,184,0.18)",
-    backdropFilter: "blur(14px)",
-  },
-
-  appShell: {
-    width: "100%",
-    maxWidth: "1180px",
-    margin: "0 auto",
-  },
-
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: "18px",
-    alignItems: "center",
-    background:
-      "linear-gradient(135deg, rgba(15,23,42,0.96), rgba(30,41,59,0.92))",
-    padding: "24px",
-    borderRadius: "26px",
-    marginBottom: "22px",
-    boxShadow: "0 20px 50px rgba(0,0,0,0.32)",
-    border: "1px solid rgba(148,163,184,0.16)",
-  },
-
-  title: {
-    margin: 0,
-    fontSize: "clamp(30px, 5vw, 48px)",
-    lineHeight: 1,
-    letterSpacing: "-1.4px",
-    fontWeight: 900,
-  },
-
-  sectionTitle: {
-    marginTop: 0,
-    marginBottom: "18px",
-    fontSize: "24px",
-    letterSpacing: "-0.5px",
-  },
-
-  lessonTitle: {
-    fontSize: "32px",
-    margin: "0 0 10px",
-    letterSpacing: "-0.7px",
-  },
-
-  subTitle: {
-    marginTop: "26px",
-    marginBottom: "10px",
-    fontSize: "20px",
-  },
-
-  tabs: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: "10px",
-    marginTop: "24px",
-    marginBottom: "22px",
-    padding: "6px",
-    borderRadius: "14px",
-    background: "rgba(2,6,23,0.55)",
-    border: "1px solid rgba(148,163,184,0.12)",
-  },
-
-  tab: {
-    padding: "12px",
-    borderRadius: "10px",
-    border: "none",
-    background: "transparent",
-    color: "#cbd5e1",
-    cursor: "pointer",
-    fontWeight: 700,
-  },
-
-  activeTab: {
-    padding: "12px",
-    borderRadius: "10px",
-    border: "none",
-    background: "linear-gradient(135deg, #22c55e, #16a34a)",
-    color: "#052e16",
-    fontWeight: 900,
-    cursor: "pointer",
-    boxShadow: "0 10px 24px rgba(34,197,94,0.26)",
-  },
-
-  label: {
-    display: "block",
-    marginTop: "14px",
-    marginBottom: "7px",
-    color: "#e5e7eb",
-    fontSize: "14px",
-    fontWeight: 800,
-  },
-
-  input: {
-    width: "100%",
-    padding: "14px 15px",
-    borderRadius: "14px",
-    border: "1px solid rgba(148,163,184,0.2)",
-    background: "rgba(2,6,23,0.58)",
-    color: "#f8fafc",
-    boxSizing: "border-box",
-    outline: "none",
-    fontSize: "15px",
-  },
-
-  textarea: {
-    width: "100%",
-    minHeight: "115px",
-    padding: "14px 15px",
-    borderRadius: "14px",
-    border: "1px solid rgba(148,163,184,0.2)",
-    background: "rgba(2,6,23,0.58)",
-    color: "#f8fafc",
-    boxSizing: "border-box",
-    resize: "vertical",
-    outline: "none",
-    fontSize: "15px",
-    lineHeight: 1.5,
-  },
-
-  button: {
-    width: "100%",
-    marginTop: "22px",
-    padding: "14px 18px",
-    borderRadius: "14px",
-    border: "none",
-    background: "linear-gradient(135deg, #22c55e, #16a34a)",
-    color: "#052e16",
-    fontWeight: 900,
-    cursor: "pointer",
-    boxShadow: "0 16px 32px rgba(34,197,94,0.28)",
-    fontSize: "15px",
-  },
-
-  logoutButton: {
-    padding: "12px 18px",
-    borderRadius: "14px",
-    border: "1px solid rgba(148,163,184,0.18)",
-    background: "rgba(15,23,42,0.85)",
-    color: "#f8fafc",
-    cursor: "pointer",
-    fontWeight: 800,
-  },
-
-  dangerButton: {
-    width: "100%",
-    marginTop: "22px",
-    padding: "14px 18px",
-    borderRadius: "14px",
-    border: "none",
-    background: "linear-gradient(135deg, #fb923c, #f97316)",
-    color: "#431407",
-    fontWeight: 900,
-    cursor: "pointer",
-    boxShadow: "0 16px 32px rgba(249,115,22,0.22)",
-    fontSize: "15px",
-  },
-
-  deleteButton: {
-    width: "100%",
-    marginTop: "12px",
-    padding: "13px 18px",
-    borderRadius: "14px",
-    border: "1px solid rgba(248,113,113,0.45)",
-    background: "rgba(127,29,29,0.16)",
-    color: "#fecaca",
-    fontWeight: 900,
-    cursor: "pointer",
-  },
-
-  message: {
-    background: "rgba(15,23,42,0.88)",
-    padding: "13px 15px",
-    borderRadius: "14px",
-    color: "#d1d5db",
-    border: "1px solid rgba(148,163,184,0.16)",
-    marginBottom: "18px",
-  },
-
-  smallText: {
-    color: "#cbd5e1",
-    margin: "6px 0",
-    fontSize: "15px",
-  },
-
-  adminBox: {
-    background:
-      "linear-gradient(135deg, rgba(15,23,42,0.94), rgba(30,41,59,0.88))",
-    padding: "24px",
-    borderRadius: "26px",
-    marginBottom: "22px",
-    border: "1px solid rgba(148,163,184,0.16)",
-    boxShadow: "0 20px 50px rgba(0,0,0,0.26)",
-  },
-
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-    gap: "22px",
-    alignItems: "start",
-  },
-
-  panel: {
-    background:
-      "linear-gradient(135deg, rgba(15,23,42,0.94), rgba(30,41,59,0.86))",
-    padding: "24px",
-    borderRadius: "26px",
-    border: "1px solid rgba(148,163,184,0.16)",
-    boxShadow: "0 20px 50px rgba(0,0,0,0.26)",
-  },
-
-  lessonCard: {
-    width: "100%",
-    display: "grid",
-    gap: "8px",
-    textAlign: "left",
-    padding: "18px",
-    marginBottom: "12px",
-    borderRadius: "18px",
-    border: "1px solid rgba(148,163,184,0.16)",
-    background: "rgba(2,6,23,0.52)",
-    color: "#f8fafc",
-    cursor: "pointer",
-    transition: "0.2s ease",
-  },
-
-  activeLessonCard: {
-    width: "100%",
-    display: "grid",
-    gap: "8px",
-    textAlign: "left",
-    padding: "18px",
-    marginBottom: "12px",
-    borderRadius: "18px",
-    border: "1px solid rgba(34,197,94,0.7)",
-    background:
-      "linear-gradient(135deg, rgba(6,78,59,0.95), rgba(20,83,45,0.78))",
-    color: "#f8fafc",
-    cursor: "pointer",
-    boxShadow: "0 16px 34px rgba(34,197,94,0.15)",
-  },
-
-  description: {
-    background: "rgba(2,6,23,0.5)",
-    padding: "18px",
-    borderRadius: "18px",
-    lineHeight: 1.65,
-    border: "1px solid rgba(148,163,184,0.12)",
-    color: "#e5e7eb",
-  },
-
-  list: {
-    background: "rgba(2,6,23,0.5)",
-    padding: "16px 16px 16px 36px",
-    borderRadius: "18px",
-    border: "1px solid rgba(148,163,184,0.12)",
-    lineHeight: 1.8,
-  },
-};
 
 export default App;
