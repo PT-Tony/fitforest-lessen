@@ -370,10 +370,7 @@ function App() {
   const userIsBooked =
     selectedLesson?.bookings.some((booking) => booking.user_id === user?.id) ?? false;
   const userCredits = profile?.credits ?? 0;
-  const userBookings = lessons.filter((lesson) =>
-    lesson.bookings.some((booking) => booking.user_id === user?.id)
-  ).length;
-
+  
   if (!user) {
     return (
       <main className="auth-page">
