@@ -867,7 +867,7 @@ const userCredits = profile?.credits ?? 0;
   <p>Neem contact op met Tony om nieuwe credits te kopen.</p>
 
 <div className="discount-banner">
-  Eerste aankoop: 50% korting!
+  Eerste aankoop: 25% korting!
 </div>
 
   <div className="price-table">
