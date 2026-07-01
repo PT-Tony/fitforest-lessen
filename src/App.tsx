@@ -795,3 +795,5 @@ const styles: Record<string, CSSProperties> = {
     lineHeight: 1.8,
   },
 };
+
+export default App;
