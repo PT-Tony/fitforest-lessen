@@ -494,18 +494,7 @@ function App() {
 
         {activeView === "lessons" && (
           <section className="view">
-            <div className="summary-row">
-              <article className="summary-card">
-                <span>Credits</span>
-                <strong>{userCredits}</strong>
-              </article>
-
-              <article className="summary-card">
-                <span>Aanmeldingen</span>
-                <strong>{userBookings}</strong>
-              </article>
-            </div>
-
+            
             <section className="lessons-layout">
               <div className="card">
                 <div className="card-heading">
@@ -549,11 +538,6 @@ function App() {
               </div>
 
               <div className="card">
-                <div className="card-heading">
-                  <h2>Lesinformatie</h2>
-                  <p>Bekijk de training en meld je aan of af.</p>
-                </div>
-
                 {!selectedLesson && (
                   <div className="empty-box">
                     <strong>Selecteer een les</strong>

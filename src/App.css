@@ -1151,3 +1151,11 @@ button {
     padding: 14px;
   }
 }
+
+.lesson-detail {
+  padding-top: 4px;
+}
+
+.lesson-detail h3 {
+  margin-top: 0;
+}
