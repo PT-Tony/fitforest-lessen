@@ -353,14 +353,6 @@ if (
     await loadAppData(user);
   }
 
-  function getBookingUsername(booking: Booking) {
-    if (Array.isArray(booking.profiles)) {
-      return booking.profiles[0]?.username ?? "Onbekend";
-    }
-
-    return booking.profiles?.username ?? "Onbekend";
-  }
-
   function formatDate(date: string) {
     return new Date(date + "T00:00:00").toLocaleDateString("nl-NL", {
       weekday: "long",
@@ -380,12 +372,34 @@ if (
     return time.slice(0, 5);
   }
 
+function canCancelLesson(lesson: Lesson) {
+  const lessonDateTime = new Date(`${lesson.lesson_date}T${lesson.lesson_time}`);
+  const now = new Date();
+  const oneHourBeforeLesson = new Date(lessonDateTime.getTime() - 1 * 60 * 60 * 1000);
+
+  return now < oneHourBeforeLesson;
+}
+
+function getCancelDeadlineText(lesson: Lesson) {
+  const lessonDateTime = new Date(`${lesson.lesson_date}T${lesson.lesson_time}`);
+  const deadline = new Date(lessonDateTime.getTime() - 1 * 60 * 60 * 1000);
+
+  return deadline.toLocaleString("nl-NL", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
   const selectedLesson = lessons.find((lesson) => lesson.id === selectedLessonId) ?? null;
 const userIsBooked =
   selectedLesson?.bookings.some((booking) => booking.user_id === user?.id) ?? false;
 const selectedLessonIsFull = selectedLesson
   ? selectedLesson.bookings.length >= selectedLesson.max_participants
   : false;
+const userCanCancelSelectedLesson = selectedLesson ? canCancelLesson(selectedLesson) : false;
 const userCredits = profile?.credits ?? 0;
   
   if (!user) {
@@ -506,9 +520,8 @@ const userCredits = profile?.credits ?? 0;
 
         {message && <p className="notice">{message}</p>}
 
-        {activeView === "lessons" && (
+                {activeView === "lessons" && (
           <section className="view">
-            
             <section className="lessons-layout">
               <div className="card">
                 <div className="card-heading">
@@ -525,28 +538,38 @@ const userCredits = profile?.credits ?? 0;
 
                 <div className="lesson-list">
                   {lessons.map((lesson) => {
-                    const isActive = selectedLessonId === lesson.id;
-                    const isBooked = lesson.bookings.some((booking) => booking.user_id === user.id);
+                    const isBooked = lesson.bookings.some(
+                      (booking) => booking.user_id === user?.id
+                    );
+
+                    const isFull =
+                      lesson.bookings.length >= lesson.max_participants;
 
                     return (
                       <button
+                        className={`lesson-item ${
+                          selectedLessonId === lesson.id ? "active" : ""
+                        } ${isFull ? "full" : ""}`}
                         key={lesson.id}
-                        className={isActive ? "lesson-item active" : "lesson-item"}
                         onClick={() => setSelectedLessonId(lesson.id)}
                       >
                         <div className="date-box">
-                          <span>{formatShortDate(lesson.lesson_date)}</span>
-                          <strong>{formatTime(lesson.lesson_time)}</strong>
-                        </div>
+  <strong>{formatShortDate(lesson.lesson_date)}</strong>
+</div>
 
                         <div className="lesson-info">
                           <strong>{lesson.title}</strong>
                           <span>
-  {lesson.bookings.length}/{lesson.max_participants} plekken bezet
-</span>
+                            {formatTime(lesson.lesson_time)} uur ·{" "}
+                            {lesson.bookings.length}/{lesson.max_participants} plekken bezet
+                          </span>
                         </div>
 
                         {isBooked && <span className="status-pill">Aangemeld</span>}
+
+                        {!isBooked && isFull && (
+                          <span className="status-pill">Vol</span>
+                        )}
                       </button>
                     );
                   })}
@@ -564,51 +587,80 @@ const userCredits = profile?.credits ?? 0;
                 {selectedLesson && (
                   <div className="lesson-detail">
                     <h3>{selectedLesson.title}</h3>
+
                     <p className="lesson-time">
                       {formatDate(selectedLesson.lesson_date)} om{" "}
                       {formatTime(selectedLesson.lesson_time)} uur
                     </p>
-<p className="lesson-capacity">
-  {selectedLesson.bookings.length}/{selectedLesson.max_participants} plekken bezet
-</p>
-                    {userIsBooked && <span className="status-pill large">Je bent aangemeld</span>}
 
-                    <div className="description-card">{selectedLesson.description}</div>
+                    <p className="lesson-capacity">
+                      {selectedLesson.bookings.length}/
+                      {selectedLesson.max_participants} plekken bezet
+                    </p>
+
+                    <div className="description-card">
+                      {selectedLesson.description}
+                    </div>
 
                     <div className="attendees">
                       <h4>Aangemeld</h4>
 
-                      {selectedLesson.bookings.length === 0 ? (
-                        <p className="small-muted">Nog niemand aangemeld.</p>
-                      ) : (
-                        <div className="attendee-list">
-                          {selectedLesson.bookings.map((booking) => (
-                            <span key={booking.id} className="attendee">
-                              {getBookingUsername(booking)}
-                            </span>
-                          ))}
-                        </div>
+                      {selectedLesson.bookings.length === 0 && (
+                        <p className="muted-text">Nog niemand aangemeld.</p>
                       )}
+
+                      <div className="attendee-list">
+                        {selectedLesson.bookings.map((booking) => {
+                          const profileData = Array.isArray(booking.profiles)
+                            ? booking.profiles[0]
+                            : booking.profiles;
+
+                          return (
+                            <span className="attendee" key={booking.id}>
+                              {profileData?.username ?? "Onbekend"}
+                            </span>
+                          );
+                        })}
+                      </div>
                     </div>
 
                     {!userIsBooked ? (
                       <button
-  className={
-    userCredits <= 0 || selectedLessonIsFull ? "disabled-btn" : "primary-btn"
-  }
-  disabled={userCredits <= 0 || selectedLessonIsFull}
-  onClick={() => bookLesson(selectedLesson.id)}
->
-  {selectedLessonIsFull
-    ? "Les zit vol"
-    : userCredits <= 0
-      ? "Geen credits beschikbaar"
-      : "Aanmelden -1 credit"}
-</button>
-                    ) : (
-                      <button className="warning-btn" onClick={() => cancelBooking(selectedLesson)}>
-                        Afmelden +1 credit
+                        className={
+                          userCredits <= 0 || selectedLessonIsFull
+                            ? "disabled-btn"
+                            : "primary-btn"
+                        }
+                        disabled={userCredits <= 0 || selectedLessonIsFull}
+                        onClick={() => bookLesson(selectedLesson.id)}
+                      >
+                        {selectedLessonIsFull
+                          ? "Les zit vol"
+                          : userCredits <= 0
+                            ? "Geen credits beschikbaar"
+                            : "Aanmelden -1 credit"}
                       </button>
+                    ) : (
+                      <>
+                        <p className="cancel-deadline">
+                          Afmelden kan tot{" "}
+                          {getCancelDeadlineText(selectedLesson)}.
+                        </p>
+
+                        <button
+                          className={
+                            userCanCancelSelectedLesson
+                              ? "warning-btn"
+                              : "disabled-btn"
+                          }
+                          disabled={!userCanCancelSelectedLesson}
+                          onClick={() => cancelBooking(selectedLesson)}
+                        >
+                          {userCanCancelSelectedLesson
+                            ? "Afmelden +1 credit"
+                            : "Afmelden gesloten"}
+                        </button>
+                      </>
                     )}
 
                     {profile?.role === "admin" && (
@@ -627,158 +679,162 @@ const userCredits = profile?.credits ?? 0;
         )}
 
         {activeView === "credits" && (
-  <section className="view credits-view">
-    <section className="credits-card">
-      <p className="credits-label">Beschikbare credits</p>
-      <strong className="credits-number">{userCredits}</strong>
-      <p className="credits-subtitle">
-        Gebruik je credits om lessen te boeken.
-      </p>
-    </section>
+          <section className="view credits-view">
+            <section className="credits-card">
+              <p className="credits-label">Beschikbare credits</p>
+              <strong className="credits-number">{userCredits}</strong>
+              <p className="credits-subtitle">
+                Gebruik je credits om lessen te boeken.
+              </p>
+            </section>
 
-    <section className="credits-rules">
-      <div className="credit-rule">
-        <span>1 credit</span>
-        <strong>1 training</strong>
-      </div>
+            <section className="credits-rules">
+              <div className="credit-rule">
+                <span>1 credit</span>
+                <strong>1 training</strong>
+              </div>
 
-      <div className="credit-rule">
-        <span>Aanmelden</span>
-        <strong>-1 credit</strong>
-      </div>
+              <div className="credit-rule">
+                <span>Aanmelden</span>
+                <strong>-1 credit</strong>
+              </div>
 
-      <div className="credit-rule">
-        <span>Afmelden</span>
-        <strong>+1 credit</strong>
-      </div>
-    </section>
+              <div className="credit-rule">
+                <span>Afmelden</span>
+                <strong>+1 credit</strong>
+              </div>
+            </section>
 
-    <section className="credits-note">
-      <strong>Credits op?</strong>
-      <p>
-        Neem contact op met Tony om nieuwe credits te kopen.
-      </p>
-    </section>
-  </section>
-)}
+            <section className="credits-note">
+              <strong>Credits op?</strong>
+              <p>Neem contact op met Tony om nieuwe credits te kopen.</p>
+            </section>
+          </section>
+        )}
 
         {activeView === "admin" && profile?.role === "admin" && (
-  <section className="view">
-    <section className="admin-dashboard">
-      <div className="admin-header-card">
-        <div>
-          <p className="admin-kicker">Admin paneel</p>
-          <h2>Beheer je rooster</h2>
-          <p>
-            Voeg lessen toe en beheer credits van klanten vanuit één overzicht.
-          </p>
-        </div>
-      </div>
+          <section className="view">
+            <section className="admin-dashboard">
+              <div className="admin-header-card">
+                <div>
+                  <p className="admin-kicker">Admin paneel</p>
+                  <h2>Beheer je rooster</h2>
+                  <p>
+                    Voeg lessen toe en beheer credits van klanten vanuit één
+                    overzicht.
+                  </p>
+                </div>
+              </div>
 
-      <div className="admin-tools-grid">
-        <section className="card admin-tool-card">
-          <div className="admin-tool-header">
-            <div>
-              <h2>Nieuwe les toevoegen</h2>
-              <p>Maak een training aan die klanten direct kunnen boeken.</p>
-            </div>
-          </div>
+              <div className="admin-tools-grid">
+                <section className="card admin-tool-card">
+                  <div className="admin-tool-header">
+                    <div>
+                      <h2>Nieuwe les toevoegen</h2>
+                      <p>
+                        Maak een training aan die klanten direct kunnen boeken.
+                      </p>
+                    </div>
+                  </div>
 
-          <label className="form-label">Titel</label>
-          <input
-            className="form-input"
-            type="text"
-            placeholder="Bijvoorbeeld Boxen"
-            value={newTitle}
-            onChange={(event) => setNewTitle(event.target.value)}
-          />
+                  <label className="form-label">Titel</label>
+                  <input
+                    className="form-input"
+                    type="text"
+                    placeholder="Bijvoorbeeld Boxen"
+                    value={newTitle}
+                    onChange={(event) => setNewTitle(event.target.value)}
+                  />
 
-          <div className="form-grid">
-  <div>
-    <label className="form-label">Datum</label>
-    <input
-      className="form-input"
-      type="date"
-      value={newDate}
-      onChange={(event) => setNewDate(event.target.value)}
-    />
-  </div>
+                  <div className="form-grid">
+                    <div>
+                      <label className="form-label">Datum</label>
+                      <input
+                        className="form-input"
+                        type="date"
+                        value={newDate}
+                        onChange={(event) => setNewDate(event.target.value)}
+                      />
+                    </div>
 
-  <div>
-    <label className="form-label">Tijd</label>
-    <input
-      className="form-input"
-      type="time"
-      value={newTime}
-      onChange={(event) => setNewTime(event.target.value)}
-    />
-  </div>
-</div>
+                    <div>
+                      <label className="form-label">Tijd</label>
+                      <input
+                        className="form-input"
+                        type="time"
+                        value={newTime}
+                        onChange={(event) => setNewTime(event.target.value)}
+                      />
+                    </div>
+                  </div>
 
-<label className="form-label">Max deelnemers</label>
-<input
-  className="form-input"
-  type="number"
-  min="1"
-  step="1"
-  value={newMaxParticipants}
-  onChange={(event) => setNewMaxParticipants(event.target.value)}
-/>
+                  <label className="form-label">Max deelnemers</label>
+                  <input
+                    className="form-input"
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={newMaxParticipants}
+                    onChange={(event) =>
+                      setNewMaxParticipants(event.target.value)
+                    }
+                  />
 
-          <label className="form-label">Beschrijving</label>
-          <textarea
-            className="form-textarea"
-            placeholder="Korte beschrijving van de les"
-            value={newDescription}
-            onChange={(event) => setNewDescription(event.target.value)}
-          />
+                  <label className="form-label">Beschrijving</label>
+                  <textarea
+                    className="form-textarea"
+                    placeholder="Korte beschrijving van de les"
+                    value={newDescription}
+                    onChange={(event) => setNewDescription(event.target.value)}
+                  />
 
-          <button className="primary-btn" onClick={createLesson}>
-            Les toevoegen
-          </button>
-        </section>
+                  <button className="primary-btn" onClick={createLesson}>
+                    Les toevoegen
+                  </button>
+                </section>
 
-        <section className="card admin-tool-card">
-          <div className="admin-tool-header">
-            <div>
-              <h2>Credits toevoegen</h2>
-              <p>Voeg credits toe nadat een klant heeft betaald.</p>
-            </div>
-          </div>
+                <section className="card admin-tool-card">
+                  <div className="admin-tool-header">
+                    <div>
+                      <h2>Credits toevoegen</h2>
+                      <p>Voeg credits toe nadat een klant heeft betaald.</p>
+                    </div>
+                  </div>
 
-          <label className="form-label">Klant e-mail</label>
-          <input
-            className="form-input"
-            type="email"
-            placeholder="klant@email.nl"
-            value={creditEmail}
-            onChange={(event) => setCreditEmail(event.target.value)}
-          />
+                  <label className="form-label">Klant e-mail</label>
+                  <input
+                    className="form-input"
+                    type="email"
+                    placeholder="klant@email.nl"
+                    value={creditEmail}
+                    onChange={(event) => setCreditEmail(event.target.value)}
+                  />
 
-          <label className="form-label">Aantal credits</label>
-          <input
-            className="form-input"
-            type="number"
-            min="1"
-            step="1"
-            value={creditAmount}
-            onChange={(event) => setCreditAmount(event.target.value)}
-          />
+                  <label className="form-label">Aantal credits</label>
+                  <input
+                    className="form-input"
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={creditAmount}
+                    onChange={(event) => setCreditAmount(event.target.value)}
+                  />
 
-          <button className="primary-btn" onClick={addCreditsToUser}>
-            Credits toevoegen
-          </button>
+                  <button className="primary-btn" onClick={addCreditsToUser}>
+                    Credits toevoegen
+                  </button>
 
-          <div className="admin-note">
-            <strong>Let op:</strong>
-            <span>
-              De klant moet eerst een account hebben voordat je credits kunt toevoegen.
-            </span>
-          </div>
-        </section>
-      </div>
-    </section>
-  </section>
+                  <div className="admin-note">
+                    <strong>Let op:</strong>
+                    <span>
+                      De klant moet eerst een account hebben voordat je credits
+                      kunt toevoegen.
+                    </span>
+                  </div>
+                </section>
+              </div>
+            </section>
+          </section>
         )}
       </section>
     </main>

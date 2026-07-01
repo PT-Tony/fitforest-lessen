@@ -1187,3 +1187,19 @@ button {
   font-size: 12px;
   font-weight: 900;
 }
+
+/* ============================= */
+/* Stap 4: afmeld-deadline */
+/* ============================= */
+
+.cancel-deadline {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.18);
+  color: var(--muted-light);
+  font-size: 14px;
+  line-height: 1.45;
+  text-align: center;
+}
