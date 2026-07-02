@@ -26,7 +26,7 @@ type Lesson = {
   bookings: Booking[];
 };
 
-type View = "lessons" | "credits" | "admin";
+type View = "lessons" | "credits" | "challenges" | "admin";
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -665,6 +665,13 @@ const userCredits = profile?.credits ?? 0;
             Credits
           </button>
 
+<button
+  className={activeView === "challenges" ? "main-tab active" : "main-tab"}
+  onClick={() => setActiveView("challenges")}
+>
+  Challenges
+</button>
+
           {profile?.role === "admin" && (
             <button
               className={activeView === "admin" ? "main-tab active" : "main-tab"}
@@ -898,6 +905,116 @@ const userCredits = profile?.credits ?? 0;
 </section>
           </section>
         )}
+
+{activeView === "challenges" && (
+  <section className="view challenges-view">
+    <section className="challenges-hero">
+      <p className="challenges-kicker">FitForest Challenges</p>
+      <h2>Kies jouw traject</h2>
+      <p>
+        Challenges zijn aparte trajecten naast losse credits. Na aankoop zet Tony
+        de bijbehorende credits handmatig op je account.
+      </p>
+    </section>
+
+    <section className="challenge-grid">
+      <article className="challenge-card">
+        <div className="challenge-top">
+          <span className="challenge-badge">Beginner friendly</span>
+          <h3>Get Active Again Challenge</h3>
+          <p>
+            Voor mensen die opnieuw willen beginnen met sporten en rustig willen
+            opbouwen naar meer ritme, conditie en zelfvertrouwen.
+          </p>
+        </div>
+
+        <div className="challenge-info">
+          <div>
+            <span>Duur</span>
+            <strong>8 weken</strong>
+          </div>
+
+          <div>
+            <span>Inclusief</span>
+            <strong>5 gratis credits</strong>
+          </div>
+
+          <div>
+            <span>Training</span>
+            <strong>1-2x per week</strong>
+          </div>
+        </div>
+
+        <ul className="challenge-list">
+          <li>Startmeting en doel bepalen</li>
+          <li>Laagdrempelige groepslessen of 1 op 1 lessen</li>
+          <li>Focus op conditie, bewegen en routine</li>
+          <li>Wekelijkse stok achter de deur</li>
+        </ul>
+
+        <div className="challenge-price">
+          <span>Introprijs</span>
+          <strong>€70</strong>
+        </div>
+
+        <button className="primary-btn" type="button">
+          Vraag Tony om informatie
+        </button>
+      </article>
+
+      <article className="challenge-card featured-challenge">
+        <div className="challenge-top">
+          <span className="challenge-badge">Populair</span>
+          <h3>10 Weken Body Transformation</h3>
+          <p>
+            Voor mensen die serieuzer aan hun lichaam willen werken met meer
+            structuur, meer trainingen en duidelijke voortgang.
+          </p>
+        </div>
+
+        <div className="challenge-info">
+          <div>
+            <span>Duur</span>
+            <strong>10 weken</strong>
+          </div>
+
+          <div>
+            <span>Inclusief</span>
+            <strong>10 gratis credits</strong>
+          </div>
+
+          <div>
+            <span>Training</span>
+            <strong>2-4x per week</strong>
+          </div>
+        </div>
+
+        <ul className="challenge-list">
+          <li>Startmeting en eindmeting</li>
+          <li>Voortgangsfoto&apos;s en metingen</li>
+          <li>Focus op kracht, conditie en vetverlies</li>
+          <li>Meer focus op je dieet</li>
+        </ul>
+
+        <div className="challenge-price">
+          <span>Introprijs</span>
+          <strong>€120</strong>
+        </div>
+
+        <button className="primary-btn" type="button">
+          Vraag Tony om informatie
+        </button>
+      </article>
+    </section>
+
+    <section className="challenge-note">
+      <strong>Hoe werkt het?</strong>
+      <p>
+        Je koopt een challenge bij Tony. Deze challenge word aan jouw account gekoppeld zodat we in 1x een hele hoop lessen kunnen inplannen daarnaast krijg je ook nog extra gratis credits om mee te doen met de reguliere groepslessen!
+      </p>
+    </section>
+  </section>
+)}
 
         {activeView === "admin" && profile?.role === "admin" && (
           <section className="view">
