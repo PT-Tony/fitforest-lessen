@@ -1804,3 +1804,67 @@ button {
   text-align: center;
   font-weight: 800;
 }
+
+/* Les bewerken */
+
+.admin-lesson-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.admin-lesson-actions .secondary-btn,
+.admin-lesson-actions .danger-btn {
+  width: 100%;
+  min-height: 50px;
+}
+
+.edit-lesson-panel {
+  display: grid;
+  gap: 12px;
+  margin-top: 6px;
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(3, 7, 18, 0.58);
+  border: 1px solid rgba(56, 189, 248, 0.22);
+}
+
+.edit-lesson-heading {
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.edit-lesson-heading h4 {
+  margin: 0 0 5px;
+  color: var(--text);
+  font-size: 22px;
+}
+
+.edit-lesson-heading p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.edit-lesson-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.edit-lesson-actions .primary-btn,
+.edit-lesson-actions .secondary-btn {
+  width: 100%;
+}
+
+@media (max-width: 520px) {
+  .admin-lesson-actions,
+  .edit-lesson-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .edit-lesson-panel {
+    padding: 15px;
+  }
+}

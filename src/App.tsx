@@ -65,6 +65,15 @@ const [loadingCustomers, setLoadingCustomers] = useState(false);
 
 const [userChallenges, setUserChallenges] = useState<UserChallenge[]>([]);
 
+const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
+const [editTitle, setEditTitle] = useState("");
+const [editDescription, setEditDescription] = useState("");
+const [editDate, setEditDate] = useState("");
+const [editStartTime, setEditStartTime] = useState("");
+const [editEndTime, setEditEndTime] = useState("");
+const [editTrainerName, setEditTrainerName] = useState("");
+const [editMaxParticipants, setEditMaxParticipants] = useState("10");
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
@@ -82,6 +91,87 @@ const [newMaxParticipants, setNewMaxParticipants] = useState("10");
   const [creditAmount, setCreditAmount] = useState("10");
 
   const [message, setMessage] = useState("Laden...");
+
+function startEditingLesson(lesson: Lesson) {
+  setEditingLessonId(lesson.id);
+  setEditTitle(lesson.title);
+  setEditDescription(lesson.description);
+  setEditDate(lesson.lesson_date);
+  setEditStartTime(formatTime(lesson.lesson_time));
+  setEditEndTime(formatTime(lesson.end_time));
+  setEditTrainerName(lesson.trainer_name);
+  setEditMaxParticipants(String(lesson.max_participants));
+  setMessage("");
+}
+
+function cancelEditingLesson() {
+  setEditingLessonId(null);
+  setMessage("");
+}
+
+async function saveLessonChanges() {
+  if (!editingLessonId || !user) {
+    return;
+  }
+
+  const maxParticipants = Number(editMaxParticipants);
+
+  if (
+    !editTitle.trim() ||
+    !editDescription.trim() ||
+    !editDate ||
+    !editStartTime ||
+    !editEndTime ||
+    !editTrainerName.trim() ||
+    !Number.isInteger(maxParticipants) ||
+    maxParticipants <= 0
+  ) {
+    setMessage("Vul alle lesgegevens correct in.");
+    return;
+  }
+
+  if (editEndTime <= editStartTime) {
+    setMessage("De eindtijd moet later zijn dan de starttijd.");
+    return;
+  }
+
+  const currentLesson = lessons.find(
+    (lesson) => lesson.id === editingLessonId
+  );
+
+  if (
+    currentLesson &&
+    maxParticipants < currentLesson.bookings.length
+  ) {
+    setMessage(
+      `Er zijn al ${currentLesson.bookings.length} deelnemers aangemeld. Het maximum kan niet lager zijn.`
+    );
+    return;
+  }
+
+  const { error } = await supabase
+    .from("lessons")
+    .update({
+      title: editTitle.trim(),
+      description: editDescription.trim(),
+      lesson_date: editDate,
+      lesson_time: editStartTime,
+      end_time: editEndTime,
+      trainer_name: editTrainerName.trim(),
+      max_participants: maxParticipants,
+    })
+    .eq("id", editingLessonId);
+
+  if (error) {
+    setMessage(error.message);
+    return;
+  }
+
+  setMessage("De les is succesvol aangepast.");
+  setEditingLessonId(null);
+  await loadAppData(user);
+}
+
 
   useEffect(() => {
   let isMounted = true;
@@ -1028,13 +1118,132 @@ const userCredits = profile?.credits ?? 0;
                     )}
 
                     {profile?.role === "admin" && (
-                      <button
-                        className="danger-btn"
-                        onClick={() => deleteLesson(selectedLesson.id)}
-                      >
-                        Les verwijderen
-                      </button>
-                    )}
+  <>
+    {editingLessonId === selectedLesson.id ? (
+      <section className="edit-lesson-panel">
+        <div className="edit-lesson-heading">
+          <h4>Les bewerken</h4>
+          <p>Pas hieronder de gegevens van deze training aan.</p>
+        </div>
+
+        <label className="form-label">Titel</label>
+        <input
+          className="form-input"
+          type="text"
+          value={editTitle}
+          onChange={(event) => setEditTitle(event.target.value)}
+        />
+
+        <div className="form-grid">
+          <div>
+            <label className="form-label">Datum</label>
+            <input
+              className="form-input"
+              type="date"
+              value={editDate}
+              onChange={(event) => setEditDate(event.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className="form-label">Trainer</label>
+            <input
+              className="form-input"
+              type="text"
+              value={editTrainerName}
+              onChange={(event) =>
+                setEditTrainerName(event.target.value)
+              }
+            />
+          </div>
+        </div>
+
+        <div className="form-grid">
+          <div>
+            <label className="form-label">Starttijd</label>
+            <input
+              className="form-input"
+              type="time"
+              value={editStartTime}
+              onChange={(event) =>
+                setEditStartTime(event.target.value)
+              }
+            />
+          </div>
+
+          <div>
+            <label className="form-label">Eindtijd</label>
+            <input
+              className="form-input"
+              type="time"
+              value={editEndTime}
+              onChange={(event) =>
+                setEditEndTime(event.target.value)
+              }
+            />
+          </div>
+        </div>
+
+        <label className="form-label">Max deelnemers</label>
+        <input
+          className="form-input"
+          type="number"
+          min={selectedLesson.bookings.length || 1}
+          step="1"
+          value={editMaxParticipants}
+          onChange={(event) =>
+            setEditMaxParticipants(event.target.value)
+          }
+        />
+
+        <label className="form-label">Beschrijving</label>
+        <textarea
+          className="form-textarea"
+          value={editDescription}
+          onChange={(event) =>
+            setEditDescription(event.target.value)
+          }
+        />
+
+        <div className="edit-lesson-actions">
+          <button
+            className="primary-btn"
+            type="button"
+            onClick={saveLessonChanges}
+          >
+            Wijzigingen opslaan
+          </button>
+
+          <button
+            className="secondary-btn"
+            type="button"
+            onClick={cancelEditingLesson}
+          >
+            Annuleren
+          </button>
+        </div>
+      </section>
+    ) : (
+      <div className="admin-lesson-actions">
+        <button
+          className="secondary-btn"
+          type="button"
+          onClick={() => startEditingLesson(selectedLesson)}
+        >
+          Les bewerken
+        </button>
+
+        <button
+          className="danger-btn"
+          type="button"
+          onClick={() => deleteLesson(selectedLesson.id)}
+        >
+          Les verwijderen
+        </button>
+      </div>
+    )}
+  </>
+)}
                   </div>
                 )}
               </div>
