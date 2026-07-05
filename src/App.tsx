@@ -1655,20 +1655,20 @@ bookings (
 
                 <div className="price-row">
                   <span>5 credits</span>
-                  <strong>€35,00</strong>
-                  <em>€7,00 per training</em>
+                  <strong>€32,50</strong>
+                  <em>€6,50 per training</em>
                 </div>
 
                 <div className="price-row featured">
                   <span>10 credits</span>
-                  <strong>€60,00</strong>
-                  <em>Populair · €6,00 per training</em>
+                  <strong>€50,00</strong>
+                  <em>Populair · €5,00 per training</em>
                 </div>
 
                 <div className="price-row best">
                   <span>20 credits</span>
-                  <strong>€100,00</strong>
-                  <em>Beste deal · €5,00 per training</em>
+                  <strong>€90,00</strong>
+                  <em>Beste deal · €4,50 per training</em>
                 </div>
               </div>
             </section>
