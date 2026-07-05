@@ -2114,8 +2114,8 @@ bookings (
                       </div>
 
                       <div>
-                        <span>Prijs</span>
-                        <strong>€70</strong>
+                        <span>Check-ins</span>
+                        <strong>Wekelijks</strong>
                       </div>
                     </div>
 
@@ -2158,8 +2158,8 @@ bookings (
                       </div>
 
                       <div>
-                        <span>Prijs</span>
-                        <strong>€120</strong>
+                        <span>Check ins</span>
+                        <strong>driedaagse </strong>
                       </div>
                     </div>
 
@@ -2176,7 +2176,7 @@ bookings (
                     </div>
 
                     <div className="challenge-contact">
-                      Neem contact op met Tony om deze challenge te starten.
+                      Neem contact op met Tony om deze uitdaging aan te gaan.
                     </div>
                   </article>
                 </section>
