@@ -1802,25 +1802,6 @@ button {
   border-color: rgba(56, 189, 248, 0.38);
 }
 
-.active-challenge-message {
-  padding: 16px;
-  border-radius: 18px;
-  background: rgba(56, 189, 248, 0.09);
-  border: 1px solid rgba(56, 189, 248, 0.2);
-  text-align: center;
-}
-
-.active-challenge-message strong {
-  color: var(--blue);
-  font-size: 17px;
-}
-
-.active-challenge-message p {
-  margin: 6px 0 0;
-  color: var(--muted-light);
-  line-height: 1.45;
-}
-
 .challenge-contact {
   padding: 14px;
   border-radius: 16px;
@@ -2108,9 +2089,6 @@ button {
   font-weight: 900;
 }
 
-.calendar-lessons-btn {
-  width: 100%;
-}
 
 @media (max-width: 520px) {
   .challenge-calendar {
@@ -2296,5 +2274,142 @@ button {
     min-width: 76px;
     padding: 0 10px;
     font-size: 12px;
+  }
+}
+
+/* Wekelijks herhalende lessen */
+
+.repeat-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 17px;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.18);
+  cursor: pointer;
+}
+
+.repeat-option input {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  margin: 2px 0 0;
+  accent-color: var(--blue);
+  cursor: pointer;
+}
+
+.repeat-option span {
+  display: grid;
+  gap: 4px;
+}
+
+.repeat-option strong {
+  color: var(--text);
+  font-size: 15px;
+}
+
+.repeat-option small {
+  color: var(--muted-light);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+
+
+/* Duidelijke herhaaloptie in adminformulier */
+.repeat-section {
+  display: grid;
+  gap: 9px;
+  margin-top: 18px;
+}
+
+.repeat-section-heading {
+  display: grid;
+  gap: 3px;
+  text-align: left;
+}
+
+.repeat-section-heading span {
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.repeat-section-heading strong {
+  color: var(--text);
+  font-size: 15px;
+}
+
+.repeat-option {
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 15px;
+  border-radius: 17px;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.24);
+  cursor: pointer;
+}
+
+.repeat-option.active {
+  background: rgba(56, 189, 248, 0.16);
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.08);
+}
+
+.repeat-option input {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--blue);
+  cursor: pointer;
+}
+
+.repeat-option span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.repeat-option strong {
+  color: var(--text);
+  font-size: 15px;
+}
+
+.repeat-option small {
+  color: var(--muted-light);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.repeat-option b {
+  min-width: 42px;
+  padding: 7px 9px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.14);
+  color: var(--muted-light);
+  font-size: 11px;
+  text-align: center;
+}
+
+.repeat-option.active b {
+  background: var(--blue);
+  color: #020617;
+}
+
+@media (max-width: 520px) {
+  .repeat-option {
+    grid-template-columns: 22px 1fr;
+  }
+
+  .repeat-option b {
+    grid-column: 2;
+    justify-self: start;
   }
 }

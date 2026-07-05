@@ -139,6 +139,7 @@ function App() {
   const [newEndTime, setNewEndTime] = useState("");
   const [newTrainerName, setNewTrainerName] = useState("Tony");
   const [newMaxParticipants, setNewMaxParticipants] = useState("10");
+  const [repeatWeekly, setRepeatWeekly] = useState(false);
 
   const [creditEmail, setCreditEmail] = useState("");
   const [creditAmount, setCreditAmount] = useState("10");
@@ -151,6 +152,12 @@ function App() {
     const day = String(date.getDate()).padStart(2, "0");
 
     return `${year}-${month}-${day}`;
+  }
+
+  function addDaysToDate(dateString: string, days: number) {
+    const date = new Date(`${dateString}T12:00:00`);
+    date.setDate(date.getDate() + days);
+    return toLocalDateKey(date);
   }
 
   function getMondayOfWeek(date: Date) {
@@ -768,16 +775,20 @@ bookings (
       setMessage("De eindtijd moet later zijn dan de starttijd.");
       return;
     }
-    const { error } = await supabase.from("lessons").insert({
-      title: newTitle,
-      description: newDescription,
-      lesson_date: newDate,
+    const lessonCount = repeatWeekly ? 4 : 1;
+
+    const lessonsToInsert = Array.from({ length: lessonCount }, (_, index) => ({
+      title: newTitle.trim(),
+      description: newDescription.trim(),
+      lesson_date: addDaysToDate(newDate, index * 7),
       lesson_time: newTime,
       end_time: newEndTime,
       trainer_name: newTrainerName.trim(),
       max_participants: maxParticipants,
       created_by: user.id,
-    });
+    }));
+
+    const { error } = await supabase.from("lessons").insert(lessonsToInsert);
 
     if (error) {
       setMessage("Les toevoegen fout: " + error.message);
@@ -791,7 +802,12 @@ bookings (
     setNewEndTime("");
     setNewTrainerName("Tony");
     setNewMaxParticipants("10");
-    setMessage("Les toegevoegd.");
+    setRepeatWeekly(false);
+    setMessage(
+      repeatWeekly
+        ? "4 wekelijkse lessen toegevoegd."
+        : "Les toegevoegd.",
+    );
 
     await loadAppData(user);
     setActiveView("lessons");
@@ -2051,13 +2067,6 @@ bookings (
                             )}
                           </div>
 
-                          <button
-                            className="secondary-btn calendar-lessons-btn"
-                            type="button"
-                            onClick={() => setActiveView("lessons")}
-                          >
-                            Naar algemene lessen
-                          </button>
                         </section>
 
                         <ul className="challenge-list">
@@ -2080,21 +2089,6 @@ bookings (
                           )}
                         </ul>
 
-                        <div className="active-challenge-message">
-                          <strong>Plan je trainingen</strong>
-                          <p>
-                            Gebruik de credits op je account om jouw trainingen
-                            via het tabblad Lessen in te plannen.
-                          </p>
-                        </div>
-
-                        <button
-                          className="primary-btn"
-                          type="button"
-                          onClick={() => setActiveView("lessons")}
-                        >
-                          Naar mijn lessen
-                        </button>
                       </article>
                     );
                   })}
@@ -2444,6 +2438,30 @@ bookings (
                         }
                       />
                     </div>
+                  </div>
+
+                  <div className="repeat-section">
+                    <div className="repeat-section-heading">
+                      <span>Herhaling</span>
+                      <strong>Moet deze les wekelijks terugkomen?</strong>
+                    </div>
+
+                    <label className={`repeat-option ${repeatWeekly ? "active" : ""}`}>
+                      <input
+                        type="checkbox"
+                        checked={repeatWeekly}
+                        onChange={(event) => setRepeatWeekly(event.target.checked)}
+                      />
+
+                      <span>
+                        <strong>Wekelijks herhalen</strong>
+                        <small>
+                          Aangevinkt = direct 4 lessen maken, steeds met 7 dagen ertussen.
+                        </small>
+                      </span>
+
+                      <b>{repeatWeekly ? "AAN" : "UIT"}</b>
+                    </label>
                   </div>
 
                   <label className="form-label">Trainer</label>
