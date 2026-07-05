@@ -43,6 +43,13 @@ type CustomerOverview = {
   challenges: string[];
 };
 
+type UserChallenge = {
+  id: string;
+  challenge_type: "get_active_again" | "body_transformation";
+  status: "active" | "completed" | "cancelled";
+  started_at: string;
+};
+
 function App() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -55,6 +62,8 @@ const [loadingCustomers, setLoadingCustomers] = useState(false);
   const [mode, setMode] = useState<"login" | "register" | "forgot" | "reset">("login");
   const [activeView, setActiveView] = useState<View>("lessons");
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
+
+const [userChallenges, setUserChallenges] = useState<UserChallenge[]>([]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -110,6 +119,7 @@ const [newMaxParticipants, setNewMaxParticipants] = useState("10");
     } else {
       setProfile(null);
       setLessons([]);
+      setUserChallenges([]);
       setSelectedLessonId(null);
       setActiveView("lessons");
     }
@@ -143,6 +153,19 @@ useEffect(() => {
       setMessage("Profiel fout: " + profileError.message);
       return;
     }
+
+const { data: challengeData, error: challengeError } = await supabase
+  .from("challenge_enrollments")
+  .select("id, challenge_type, status, started_at")
+  .eq("user_id", currentUser.id)
+  .eq("status", "active")
+  .order("started_at", { ascending: false });
+
+if (challengeError) {
+  setMessage(challengeError.message);
+} else {
+  setUserChallenges((challengeData ?? []) as UserChallenge[]);
+}
 
     setProfile(profileData as Profile);
 
@@ -1085,111 +1108,210 @@ const userCredits = profile?.credits ?? 0;
 
 {activeView === "challenges" && (
   <section className="view challenges-view">
-    <section className="challenges-hero">
-      <p className="challenges-kicker">FitForest Challenges</p>
-      <h2>Kies jouw traject</h2>
-      <p>
-        Challenges zijn aparte trajecten naast losse credits. Na aankoop zet Tony
-        de bijbehorende credits handmatig op je account.
-      </p>
-    </section>
-
-    <section className="challenge-grid">
-      <article className="challenge-card">
-        <div className="challenge-top">
-          <span className="challenge-badge">Beginner friendly</span>
-          <h3>Get Active Again Challenge</h3>
+    {userChallenges.length > 0 ? (
+      <>
+        <section className="challenges-hero active-challenge-hero">
+          <p className="challenges-kicker">Mijn challenge</p>
+          <h2>Jouw actieve traject</h2>
           <p>
-            Voor mensen die opnieuw willen beginnen met sporten en rustig willen
-            opbouwen naar meer ritme, conditie en zelfvertrouwen.
+            Hieronder vind je de challenge die momenteel aan jouw account is
+            gekoppeld.
           </p>
-        </div>
+        </section>
 
-        <div className="challenge-info">
-          <div>
-            <span>Duur</span>
-            <strong>8 weken</strong>
-          </div>
+        <section className="active-challenges-list">
+          {userChallenges.map((challenge) => {
+            const isGetActiveAgain =
+              challenge.challenge_type === "get_active_again";
 
-          <div>
-            <span>Inclusief</span>
-            <strong>5 gratis credits</strong>
-          </div>
+            return (
+              <article
+                className="challenge-card active-user-challenge"
+                key={challenge.id}
+              >
+                <div className="challenge-top">
+                  <span className="challenge-badge">Actief</span>
 
-          <div>
-            <span>Training</span>
-            <strong>1-2x per week</strong>
-          </div>
-        </div>
+                  <h3>
+                    {isGetActiveAgain
+                      ? "Get Active Again Challenge"
+                      : "10-Week Body Transformation"}
+                  </h3>
 
-        <ul className="challenge-list">
-          <li>Startmeting en doel bepalen</li>
-          <li>Laagdrempelige groepslessen of 1 op 1 lessen</li>
-          <li>Focus op conditie, bewegen en routine</li>
-          <li>Wekelijkse stok achter de deur</li>
-        </ul>
+                  <p>
+                    {isGetActiveAgain
+                      ? "Werk in 8 weken aan meer beweging, conditie, ritme en zelfvertrouwen."
+                      : "Werk in 10 weken gestructureerd aan kracht, conditie en lichaamssamenstelling."}
+                  </p>
+                </div>
 
-        <div className="challenge-price">
-          <span>Introprijs</span>
-          <strong>€70</strong>
-        </div>
+                <div className="challenge-info">
+                  <div>
+                    <span>Duur</span>
+                    <strong>
+                      {isGetActiveAgain ? "8 weken" : "10 weken"}
+                    </strong>
+                  </div>
 
-        <button className="primary-btn" type="button">
-          Vraag Tony om informatie
-        </button>
-      </article>
+                  <div>
+                    <span>Status</span>
+                    <strong>Actief</strong>
+                  </div>
 
-      <article className="challenge-card featured-challenge">
-        <div className="challenge-top">
-          <span className="challenge-badge">Populair</span>
-          <h3>10 Weken Body Transformation</h3>
+                  <div>
+                    <span>Startdatum</span>
+                    <strong>
+                      {new Date(
+                        `${challenge.started_at}T12:00:00`
+                      ).toLocaleDateString("nl-NL", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </strong>
+                  </div>
+                </div>
+
+                <ul className="challenge-list">
+                  {isGetActiveAgain ? (
+                    <>
+                      <li>Laagdrempelig opnieuw beginnen met sporten</li>
+                      <li>Focus op conditie en trainingsroutine</li>
+                      <li>Trainingscredits op jouw account</li>
+                      <li>Persoonlijke begeleiding van Tony</li>
+                    </>
+                  ) : (
+                    <>
+                      <li>Focus op kracht, conditie en vetverlies</li>
+                      <li>Begin- en eindmeting</li>
+                      <li>Voortgang bijhouden gedurende het traject</li>
+                      <li>Persoonlijke begeleiding van Tony</li>
+                    </>
+                  )}
+                </ul>
+
+                <div className="active-challenge-message">
+                  <strong>Plan je trainingen</strong>
+                  <p>
+                    Gebruik de credits op je account om jouw trainingen via het
+                    tabblad Lessen in te plannen.
+                  </p>
+                </div>
+
+                <button
+                  className="primary-btn"
+                  type="button"
+                  onClick={() => setActiveView("lessons")}
+                >
+                  Naar mijn lessen
+                </button>
+              </article>
+            );
+          })}
+        </section>
+      </>
+    ) : (
+      <>
+        <section className="challenges-hero">
+          <p className="challenges-kicker">FitForest Challenges</p>
+          <h2>Kies jouw traject</h2>
           <p>
-            Voor mensen die serieuzer aan hun lichaam willen werken met meer
-            structuur, meer trainingen en duidelijke voortgang.
+            Kies een challenge die aansluit bij jouw doel. Na aankoop koppelt
+            Tony het traject en de bijbehorende credits aan jouw account.
           </p>
-        </div>
+        </section>
 
-        <div className="challenge-info">
-          <div>
-            <span>Duur</span>
-            <strong>10 weken</strong>
-          </div>
+        <section className="challenge-grid">
+          <article className="challenge-card">
+            <div className="challenge-top">
+              <span className="challenge-badge">Beginner friendly</span>
+              <h3>Get Active Again Challenge</h3>
+              <p>
+                Voor mensen die opnieuw willen beginnen met sporten en rustig
+                willen werken aan conditie, ritme en zelfvertrouwen.
+              </p>
+            </div>
 
-          <div>
-            <span>Inclusief</span>
-            <strong>10 gratis credits</strong>
-          </div>
+            <div className="challenge-info">
+              <div>
+                <span>Duur</span>
+                <strong>8 weken</strong>
+              </div>
 
-          <div>
-            <span>Training</span>
-            <strong>2-4x per week</strong>
-          </div>
-        </div>
+              <div>
+                <span>Inclusief</span>
+                <strong>Trainingscredits</strong>
+              </div>
 
-        <ul className="challenge-list">
-          <li>Startmeting en eindmeting</li>
-          <li>Voortgangsfoto&apos;s en metingen</li>
-          <li>Focus op kracht, conditie en vetverlies</li>
-          <li>Meer focus op je dieet</li>
-        </ul>
+              <div>
+                <span>Prijs</span>
+                <strong>€70</strong>
+              </div>
+            </div>
 
-        <div className="challenge-price">
-          <span>Introprijs</span>
-          <strong>€120</strong>
-        </div>
+            <ul className="challenge-list">
+              <li>Startmeting en persoonlijk doel</li>
+              <li>Laagdrempelig trainingsprogramma</li>
+              <li>Focus op bewegen, conditie en routine</li>
+              <li>Persoonlijke begeleiding</li>
+            </ul>
 
-        <button className="primary-btn" type="button">
-          Vraag Tony om informatie
-        </button>
-      </article>
-    </section>
+            <div className="challenge-price">
+              <span>Challengeprijs</span>
+              <strong>€70</strong>
+            </div>
 
-    <section className="challenge-note">
-      <strong>Hoe werkt het?</strong>
-      <p>
-        Je koopt een challenge bij Tony. Deze challenge word aan jouw account gekoppeld zodat we in 1x een hele hoop lessen kunnen inplannen daarnaast krijg je ook nog extra gratis credits om mee te doen met de reguliere groepslessen!
-      </p>
-    </section>
+            <div className="challenge-contact">
+              Neem contact op met Tony om deze challenge te starten.
+            </div>
+          </article>
+
+          <article className="challenge-card featured-challenge">
+            <div className="challenge-top">
+              <span className="challenge-badge">Populair</span>
+              <h3>10-Week Body Transformation</h3>
+              <p>
+                Voor mensen die gestructureerd willen werken aan kracht,
+                conditie en zichtbare vooruitgang.
+              </p>
+            </div>
+
+            <div className="challenge-info">
+              <div>
+                <span>Duur</span>
+                <strong>10 weken</strong>
+              </div>
+
+              <div>
+                <span>Inclusief</span>
+                <strong>Trainingscredits</strong>
+              </div>
+
+              <div>
+                <span>Prijs</span>
+                <strong>€120</strong>
+              </div>
+            </div>
+
+            <ul className="challenge-list">
+              <li>Startmeting en eindmeting</li>
+              <li>Voortgangsfoto&apos;s en metingen</li>
+              <li>Focus op kracht, conditie en vetverlies</li>
+              <li>Persoonlijke begeleiding</li>
+            </ul>
+
+            <div className="challenge-price">
+              <span>Introprijs</span>
+              <strong>€120</strong>
+            </div>
+
+            <div className="challenge-contact">
+              Neem contact op met Tony om deze challenge te starten.
+            </div>
+          </article>
+        </section>
+      </>
+    )}
   </section>
 )}
 
