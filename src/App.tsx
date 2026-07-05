@@ -1655,20 +1655,20 @@ bookings (
 
                 <div className="price-row">
                   <span>5 credits</span>
-                  <strong>€32,50</strong>
-                  <em>€6,50 per training</em>
+                  <strong>€35,00</strong>
+                  <em>€7,00 per training</em>
                 </div>
 
                 <div className="price-row featured">
                   <span>10 credits</span>
-                  <strong>€50,00</strong>
-                  <em>Populair · €5,00 per training</em>
+                  <strong>€60,00</strong>
+                  <em>Populair · €6,00 per training</em>
                 </div>
 
                 <div className="price-row best">
                   <span>20 credits</span>
-                  <strong>€90,00</strong>
-                  <em>Beste deal · €4,50 per training</em>
+                  <strong>€100,00</strong>
+                  <em>Beste deal · €5,00 per training</em>
                 </div>
               </div>
             </section>
@@ -2051,6 +2051,13 @@ bookings (
                             )}
                           </div>
 
+                          <button
+                            className="secondary-btn calendar-lessons-btn"
+                            type="button"
+                            onClick={() => setActiveView("lessons")}
+                          >
+                            Naar algemene lessen
+                          </button>
                         </section>
 
                         <ul className="challenge-list">
@@ -2073,6 +2080,21 @@ bookings (
                           )}
                         </ul>
 
+                        <div className="active-challenge-message">
+                          <strong>Plan je trainingen</strong>
+                          <p>
+                            Gebruik de credits op je account om jouw trainingen
+                            via het tabblad Lessen in te plannen.
+                          </p>
+                        </div>
+
+                        <button
+                          className="primary-btn"
+                          type="button"
+                          onClick={() => setActiveView("lessons")}
+                        >
+                          Naar mijn lessen
+                        </button>
                       </article>
                     );
                   })}
@@ -2110,12 +2132,12 @@ bookings (
 
                       <div>
                         <span>Inclusief</span>
-                        <strong>5 Credits</strong>
+                        <strong>Trainingscredits</strong>
                       </div>
 
                       <div>
-                        <span>Check-ins</span>
-                        <strong>Wekelijks</strong>
+                        <span>Prijs</span>
+                        <strong>€70</strong>
                       </div>
                     </div>
 
@@ -2154,12 +2176,12 @@ bookings (
 
                       <div>
                         <span>Inclusief</span>
-                        <strong>10 Credits</strong>
+                        <strong>Trainingscredits</strong>
                       </div>
 
                       <div>
-                        <span>Check ins</span>
-                        <strong>driedaagse </strong>
+                        <span>Prijs</span>
+                        <strong>€120</strong>
                       </div>
                     </div>
 
@@ -2176,7 +2198,7 @@ bookings (
                     </div>
 
                     <div className="challenge-contact">
-                      Neem contact op met Tony om deze uitdaging aan te gaan.
+                      Neem contact op met Tony om deze challenge te starten.
                     </div>
                   </article>
                 </section>
@@ -2495,5 +2517,3 @@ bookings (
 }
 
 export default App;
-
-// Build marker: challenge shortcut removed
