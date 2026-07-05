@@ -28,12 +28,29 @@ type Lesson = {
   bookings: Booking[];
 };
 
-type View = "lessons" | "credits" | "challenges" | "admin";
+type View =
+  | "lessons"
+  | "credits"
+  | "challenges"
+  | "customers"
+  | "admin";
+type CustomerOverview = {
+  user_id: string;
+  username: string;
+  email: string;
+  credits: number;
+  booking_count: number;
+  challenges: string[];
+};
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
+
+const [customers, setCustomers] = useState<CustomerOverview[]>([]);
+const [customerSearch, setCustomerSearch] = useState("");
+const [loadingCustomers, setLoadingCustomers] = useState(false);
 
   const [mode, setMode] = useState<"login" | "register" | "forgot" | "reset">("login");
   const [activeView, setActiveView] = useState<View>("lessons");
@@ -98,11 +115,20 @@ const [newMaxParticipants, setNewMaxParticipants] = useState("10");
     }
   }, [user]);
 
-  useEffect(() => {
-    if (profile?.role !== "admin" && activeView === "admin") {
-      setActiveView("lessons");
-    }
-  }, [profile, activeView]);
+useEffect(() => {
+  const isAdminView =
+    activeView === "admin" || activeView === "customers";
+
+  if (profile?.role !== "admin" && isAdminView) {
+    setActiveView("lessons");
+  }
+}, [profile, activeView]);
+
+useEffect(() => {
+  if (activeView === "customers" && profile?.role === "admin") {
+    loadCustomerOverview();
+  }
+}, [activeView, profile?.role]);
 
   async function loadAppData(currentUser: User) {
     setMessage("Lessen laden...");
@@ -472,6 +498,112 @@ function getCancelDeadlineText(lesson: Lesson) {
   });
 }
 
+async function loadCustomerOverview() {
+  if (profile?.role !== "admin") {
+    return;
+  }
+
+  setLoadingCustomers(true);
+
+  const { data, error } = await supabase.rpc(
+    "admin_get_customer_overview"
+  );
+
+  setLoadingCustomers(false);
+
+  if (error) {
+    setMessage(error.message);
+    return;
+  }
+
+  setCustomers((data ?? []) as CustomerOverview[]);
+}
+
+async function addCreditsFromOverview(
+  customerEmail: string,
+  amount: number
+) {
+  setMessage("");
+
+  const { error } = await supabase.rpc(
+    "admin_add_credits_by_email",
+    {
+      p_email: customerEmail,
+      p_amount: amount,
+    }
+  );
+
+  if (error) {
+    setMessage(error.message);
+    return;
+  }
+
+  setMessage(`${amount} credits toegevoegd.`);
+  await loadCustomerOverview();
+
+  if (user) {
+    await loadAppData(user);
+  }
+}
+
+async function assignChallenge(
+  customerId: string,
+  challengeType: string
+) {
+  setMessage("");
+
+  const { error } = await supabase.rpc(
+    "admin_assign_challenge",
+    {
+      p_user_id: customerId,
+      p_challenge_type: challengeType,
+    }
+  );
+
+  if (error) {
+    setMessage(error.message);
+    return;
+  }
+
+  setMessage("Challenge aan klant toegewezen.");
+  await loadCustomerOverview();
+}
+
+async function removeChallenge(
+  customerId: string,
+  challengeType: string
+) {
+  setMessage("");
+
+  const { error } = await supabase.rpc(
+    "admin_remove_challenge",
+    {
+      p_user_id: customerId,
+      p_challenge_type: challengeType,
+    }
+  );
+
+  if (error) {
+    setMessage(error.message);
+    return;
+  }
+
+  setMessage("Challenge verwijderd.");
+  await loadCustomerOverview();
+}
+
+function getChallengeLabel(challengeType: string) {
+  if (challengeType === "get_active_again") {
+    return "Get Active Again";
+  }
+
+  if (challengeType === "body_transformation") {
+    return "10-Week Body Transformation";
+  }
+
+  return challengeType;
+}
+
   const selectedLesson = lessons.find((lesson) => lesson.id === selectedLessonId) ?? null;
 const userIsBooked =
   selectedLesson?.bookings.some((booking) => booking.user_id === user?.id) ?? false;
@@ -480,7 +612,18 @@ const selectedLessonIsFull = selectedLesson
   : false;
 const userCanCancelSelectedLesson = selectedLesson ? canCancelLesson(selectedLesson) : false;
 const userCredits = profile?.credits ?? 0;
-  
+  const filteredCustomers = customers.filter((customer) => {
+  const searchValue = customerSearch.toLowerCase().trim();
+
+  if (!searchValue) {
+    return true;
+  }
+
+  return (
+    customer.username.toLowerCase().includes(searchValue) ||
+    customer.email.toLowerCase().includes(searchValue)
+  );
+});
   if (!user || mode === "reset") {
   return (
     <main className="auth-page">
@@ -691,13 +834,24 @@ const userCredits = profile?.credits ?? 0;
 </button>
 
           {profile?.role === "admin" && (
-            <button
-              className={activeView === "admin" ? "main-tab active" : "main-tab"}
-              onClick={() => setActiveView("admin")}
-            >
-              Admin
-            </button>
-          )}
+  <>
+    <button
+      className={
+        activeView === "customers" ? "main-tab active" : "main-tab"
+      }
+      onClick={() => setActiveView("customers")}
+    >
+      Klanten
+    </button>
+
+    <button
+      className={activeView === "admin" ? "main-tab active" : "main-tab"}
+      onClick={() => setActiveView("admin")}
+    >
+      Admin
+    </button>
+  </>
+)}
         </nav>
 
         {message && <p className="notice">{message}</p>}
@@ -1035,6 +1189,158 @@ const userCredits = profile?.credits ?? 0;
       <p>
         Je koopt een challenge bij Tony. Deze challenge word aan jouw account gekoppeld zodat we in 1x een hele hoop lessen kunnen inplannen daarnaast krijg je ook nog extra gratis credits om mee te doen met de reguliere groepslessen!
       </p>
+    </section>
+  </section>
+)}
+
+{activeView === "customers" && profile?.role === "admin" && (
+  <section className="view customers-view">
+    <section className="customer-overview">
+      <div className="customer-overview-header">
+        <div>
+          <p className="admin-kicker">Klantenbeheer</p>
+          <h2>Klantenoverzicht</h2>
+          <p>Bekijk credits, boekingen en actieve challenges.</p>
+        </div>
+
+        <button
+          className="secondary-btn"
+          type="button"
+          onClick={loadCustomerOverview}
+        >
+          Vernieuwen
+        </button>
+      </div>
+
+      <input
+        className="form-input customer-search"
+        type="search"
+        placeholder="Zoek op naam of e-mailadres"
+        value={customerSearch}
+        onChange={(event) => setCustomerSearch(event.target.value)}
+      />
+
+      {loadingCustomers && (
+        <div className="empty-box">
+          <strong>Klanten laden...</strong>
+        </div>
+      )}
+
+      {!loadingCustomers && filteredCustomers.length === 0 && (
+        <div className="empty-box">
+          <strong>Geen klanten gevonden</strong>
+          <span>
+            Er zijn nog geen klanten of je zoekopdracht heeft geen resultaten.
+          </span>
+        </div>
+      )}
+
+      <div className="customer-list">
+        {filteredCustomers.map((customer) => (
+          <article className="customer-card" key={customer.user_id}>
+            <div className="customer-main">
+              <div>
+                <h3>{customer.username}</h3>
+                <p>{customer.email}</p>
+              </div>
+
+              <span className="customer-credit-count">
+                {customer.credits} credits
+              </span>
+            </div>
+
+            <div className="customer-stats">
+              <div>
+                <span>Credits</span>
+                <strong>{customer.credits}</strong>
+              </div>
+
+              <div>
+                <span>Boekingen</span>
+                <strong>{customer.booking_count}</strong>
+              </div>
+
+              <div>
+                <span>Challenges</span>
+                <strong>{customer.challenges.length}</strong>
+              </div>
+            </div>
+
+            <div className="customer-actions">
+              <p className="customer-action-title">Credits toevoegen</p>
+
+              <div className="quick-credit-buttons">
+                {[1, 5, 10, 20].map((amount) => (
+                  <button
+                    key={amount}
+                    type="button"
+                    onClick={() =>
+                      addCreditsFromOverview(customer.email, amount)
+                    }
+                  >
+                    +{amount}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="customer-challenges">
+              <p className="customer-action-title">Actieve challenges</p>
+
+              {customer.challenges.length === 0 && (
+                <p className="muted-text">Geen actieve challenge.</p>
+              )}
+
+              <div className="customer-challenge-list">
+                {customer.challenges.map((challenge) => (
+                  <div className="customer-challenge" key={challenge}>
+                    <span>{getChallengeLabel(challenge)}</span>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        removeChallenge(customer.user_id, challenge)
+                      }
+                    >
+                      Verwijderen
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="challenge-assign-buttons">
+                {!customer.challenges.includes("get_active_again") && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      assignChallenge(
+                        customer.user_id,
+                        "get_active_again"
+                      )
+                    }
+                  >
+                    + Get Active Again
+                  </button>
+                )}
+
+                {!customer.challenges.includes("body_transformation") && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      assignChallenge(
+                        customer.user_id,
+                        "body_transformation"
+                      )
+                    }
+                  >
+                    + Body Transformation
+                  </button>
+                )}
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
     </section>
   </section>
 )}
