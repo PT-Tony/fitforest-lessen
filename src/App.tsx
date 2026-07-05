@@ -22,6 +22,8 @@ type Lesson = {
   description: string;
   lesson_date: string;
   lesson_time: string;
+  end_time: string;
+  trainer_name: string;
   max_participants: number;
   bookings: Booking[];
 };
@@ -42,11 +44,13 @@ function App() {
   const [username, setUsername] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
-  const [newTitle, setNewTitle] = useState("");
-  const [newDescription, setNewDescription] = useState("");
-  const [newDate, setNewDate] = useState("");
-  const [newTime, setNewTime] = useState("");
-  const [newMaxParticipants, setNewMaxParticipants] = useState("10");
+const [newTitle, setNewTitle] = useState("");
+const [newDescription, setNewDescription] = useState("");
+const [newDate, setNewDate] = useState("");
+const [newTime, setNewTime] = useState("");
+const [newEndTime, setNewEndTime] = useState("");
+const [newTrainerName, setNewTrainerName] = useState("Tony");
+const [newMaxParticipants, setNewMaxParticipants] = useState("10");
 
   const [creditEmail, setCreditEmail] = useState("");
   const [creditAmount, setCreditAmount] = useState("10");
@@ -122,12 +126,14 @@ function App() {
       .from("lessons")
       .select(`
         id,
-        title,
-        description,
-        lesson_date,
-        lesson_time,
-        max_participants,
-        bookings (
+title,
+description,
+lesson_date,
+lesson_time,
+end_time,
+trainer_name,
+max_participants,
+bookings (
           id,
           user_id,
           profiles (
@@ -288,18 +294,28 @@ if (
   !newDescription ||
   !newDate ||
   !newTime ||
+  !newEndTime ||
+  !newTrainerName.trim() ||
   !Number.isInteger(maxParticipants) ||
   maxParticipants <= 0
 ) {
-  setMessage("Vul titel, beschrijving, datum, tijd en max deelnemers in.");
+  setMessage(
+    "Vul titel, beschrijving, datum, starttijd, eindtijd, trainer en max deelnemers in."
+  );
   return;
 }
 
+if (newEndTime <= newTime) {
+  setMessage("De eindtijd moet later zijn dan de starttijd.");
+  return;
+}
     const { error } = await supabase.from("lessons").insert({
   title: newTitle,
   description: newDescription,
   lesson_date: newDate,
   lesson_time: newTime,
+  end_time: newEndTime,
+  trainer_name: newTrainerName.trim(),
   max_participants: maxParticipants,
   created_by: user.id,
 });
@@ -309,11 +325,13 @@ if (
       return;
     }
 
-    setNewTitle("");
-    setNewDescription("");
-    setNewDate("");
-    setNewTime("");
-    setNewMaxParticipants("10");
+setNewTitle("");
+setNewDescription("");
+setNewDate("");
+setNewTime("");
+setNewEndTime("");
+setNewTrainerName("Tony");
+setNewMaxParticipants("10");
     setMessage("Les toegevoegd.");
 
     await loadAppData(user);
@@ -724,8 +742,8 @@ const userCredits = profile?.credits ?? 0;
                         <div className="lesson-info">
                           <strong>{lesson.title}</strong>
                           <span>
-                            {formatTime(lesson.lesson_time)} uur ·{" "}
-                            {lesson.bookings.length}/{lesson.max_participants} plekken bezet
+                            {formatTime(lesson.lesson_time)} - {formatTime(lesson.end_time)} uur ·{" "}
+{lesson.bookings.length}/{lesson.max_participants} plekken bezet
                           </span>
                         </div>
 
@@ -753,9 +771,14 @@ const userCredits = profile?.credits ?? 0;
                     <h3>{selectedLesson.title}</h3>
 
                     <p className="lesson-time">
-                      {formatDate(selectedLesson.lesson_date)} om{" "}
-                      {formatTime(selectedLesson.lesson_time)} uur
-                    </p>
+  {formatDate(selectedLesson.lesson_date)} van{" "}
+  {formatTime(selectedLesson.lesson_time)} tot{" "}
+  {formatTime(selectedLesson.end_time)} uur
+</p>
+
+<p className="lesson-trainer">
+  Gegeven door {selectedLesson.trainer_name}
+</p>
 
                     <p className="lesson-capacity">
                       {selectedLesson.bookings.length}/
@@ -1051,38 +1074,59 @@ const userCredits = profile?.credits ?? 0;
                   />
 
                   <div className="form-grid">
-                    <div>
-                      <label className="form-label">Datum</label>
-                      <input
-                        className="form-input"
-                        type="date"
-                        value={newDate}
-                        onChange={(event) => setNewDate(event.target.value)}
-                      />
-                    </div>
+  <div>
+    <label className="form-label">Datum</label>
+    <input
+      className="form-input"
+      type="date"
+      value={newDate}
+      onChange={(event) => setNewDate(event.target.value)}
+    />
+  </div>
 
-                    <div>
-                      <label className="form-label">Tijd</label>
-                      <input
-                        className="form-input"
-                        type="time"
-                        value={newTime}
-                        onChange={(event) => setNewTime(event.target.value)}
-                      />
-                    </div>
-                  </div>
+  <div>
+    <label className="form-label">Starttijd</label>
+    <input
+      className="form-input"
+      type="time"
+      value={newTime}
+      onChange={(event) => setNewTime(event.target.value)}
+    />
+  </div>
+</div>
 
-                  <label className="form-label">Max deelnemers</label>
-                  <input
-                    className="form-input"
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={newMaxParticipants}
-                    onChange={(event) =>
-                      setNewMaxParticipants(event.target.value)
-                    }
-                  />
+<div className="form-grid">
+  <div>
+    <label className="form-label">Eindtijd</label>
+    <input
+      className="form-input"
+      type="time"
+      value={newEndTime}
+      onChange={(event) => setNewEndTime(event.target.value)}
+    />
+  </div>
+
+  <div>
+    <label className="form-label">Max deelnemers</label>
+    <input
+      className="form-input"
+      type="number"
+      min="1"
+      step="1"
+      value={newMaxParticipants}
+      onChange={(event) => setNewMaxParticipants(event.target.value)}
+    />
+  </div>
+</div>
+
+<label className="form-label">Trainer</label>
+<input
+  className="form-input"
+  type="text"
+  placeholder="Bijvoorbeeld Tony"
+  value={newTrainerName}
+  onChange={(event) => setNewTrainerName(event.target.value)}
+/>
 
                   <label className="form-label">Beschrijving</label>
                   <textarea

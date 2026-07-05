@@ -1521,3 +1521,11 @@ button {
     font-size: 30px;
   }
 }
+
+.lesson-trainer {
+  margin: -6px 0 0;
+  color: var(--muted-light);
+  font-size: 14px;
+  font-weight: 850;
+  text-align: center;
+}
