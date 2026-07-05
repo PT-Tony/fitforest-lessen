@@ -2110,7 +2110,7 @@ bookings (
 
                       <div>
                         <span>Inclusief</span>
-                        <strong>Trainingscredits</strong>
+                        <strong>5 Credits</strong>
                       </div>
 
                       <div>
@@ -2154,7 +2154,7 @@ bookings (
 
                       <div>
                         <span>Inclusief</span>
-                        <strong>Trainingscredits</strong>
+                        <strong>10 Credits</strong>
                       </div>
 
                       <div>
